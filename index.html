@@ -7,85 +7,120 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#1e1e2e;--panel:#2a2a3e;--accent:#7c7cff;
-  --text:#cdd6f4;--dim:#6c7086;
-  --green:#a6e3a1;--blue:#89b4fa;--red:#f38ba8;
-  --entry:#313244;--surface:#181825;
+  --bg:#19191c;--panel:#2a2a2f;--accent:#e4e4e9;
+  --text:#d6d6da;--dim:#8b8b92;
+  --green:#4ade80;--blue:#a1a1aa;--red:#f87171;
+  --entry:#212126;--surface:#0d0d0f;
+  --border:#36363c;--sel-text:#111114;
 }
-body{background:var(--bg);color:var(--text);font-family:Consolas,monospace;font-size:12px;min-height:100vh}
-.app{max-width:940px;margin:0 auto;padding:14px 16px}
-h1{color:var(--accent);font-size:13px;font-weight:bold;padding-bottom:12px;border-bottom:1px solid var(--panel);margin-bottom:12px}
-.main{display:flex;gap:14px;align-items:flex-start}
-.left{flex:0 0 270px;display:flex;flex-direction:column;gap:0}
-.right{flex:1;display:flex;flex-direction:column;gap:6px}
-/* Section labels */
-.lbl{color:var(--accent);font-weight:bold;font-size:10px;padding:9px 0 4px;letter-spacing:.04em}
-/* Type list */
-#type-list{list-style:none;background:var(--entry);border-radius:6px;max-height:220px;overflow-y:auto;border:1px solid var(--panel)}
-#type-list li{padding:5px 10px;cursor:pointer;font-size:11px;white-space:nowrap}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:12px;height:100vh;overflow:hidden}
+/* ── Layout ─── */
+.app{width:100%;height:100vh;padding:10px 20px;display:flex;flex-direction:column;gap:0}
+h1{
+  color:var(--text);font-size:13px;font-weight:600;letter-spacing:.02em;
+  padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:10px;flex-shrink:0;
+  display:flex;align-items:center;gap:8px
+}
+h1::before{content:'';display:inline-block;width:3px;height:14px;background:var(--accent);border-radius:2px}
+.main{display:flex;gap:14px;flex:1;min-height:0;overflow:hidden}
+.left{flex:0 0 240px;display:flex;flex-direction:column;gap:0;overflow-y:auto;padding-right:6px}
+/* 主預覽 + 縮圖欄 */
+.right{flex:1;min-width:0;min-height:0;display:flex;gap:10px;align-items:flex-start;overflow:hidden}
+#main-panel{flex:1;min-width:0;max-width:calc(100vh - 130px)}
+.thumbs{flex:0 0 clamp(140px, calc((100vh - 202px)/3), 230px);display:flex;flex-direction:column;gap:10px;max-height:100%;overflow-y:auto;padding-right:2px}
+.hdr-slider{width:60px;flex:none;accent-color:var(--accent);height:3px;min-width:0}
+/* Collapsible sections */
+details.section{border-bottom:1px solid var(--border)}
+details.section:last-child{border-bottom:none}
+details.section>summary{list-style:none;cursor:pointer;color:var(--dim);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:8px 0 4px;display:flex;align-items:center;gap:6px;user-select:none}
+details.section>summary::-webkit-details-marker{display:none}
+details.section>summary::before{content:'';display:inline-block;width:2px;height:9px;background:var(--accent);border-radius:1px;opacity:.7}
+details.section>summary::after{content:'▾';color:var(--dim);font-size:9px;margin-left:auto}
+details.section:not([open])>summary::after{content:'▸'}
+details.section>summary:hover{color:var(--text)}
+/* Type group label inside list */
+.type-group-lbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);padding:6px 10px 3px;opacity:.65;pointer-events:none;list-style:none}
+/* Bottom info strip */
+.res-info{color:var(--dim);font-size:10px;font-family:'Consolas',monospace;white-space:nowrap}
+.hotkey-hint{color:var(--dim);font-size:10px;opacity:.5;white-space:nowrap;display:none}
+@media(min-width:900px){.hotkey-hint{display:block}}
+/* ── Section labels ── */
+.lbl{
+  color:var(--dim);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  padding:10px 0 5px;display:flex;align-items:center;gap:6px
+}
+.lbl::before{content:'';display:inline-block;width:2px;height:9px;background:var(--accent);border-radius:1px;opacity:.7}
+/* ── Type list ── */
+#type-list{list-style:none;background:var(--entry);border-radius:8px;max-height:200px;overflow-y:auto;border:1px solid var(--border)}
+#type-list li{padding:6px 10px;cursor:pointer;font-size:11px;white-space:nowrap;transition:background .1s;border-radius:0}
+#type-list li:first-child{border-radius:7px 7px 0 0}
+#type-list li:last-child{border-radius:0 0 7px 7px}
 #type-list li:hover{background:var(--panel)}
-#type-list li.sel{background:var(--accent);color:#1e1e2e}
-/* Radio rows */
+#type-list li.sel{background:var(--accent);color:var(--sel-text);font-weight:600}
+/* ── Radio ── */
 .radio-row{display:flex;gap:6px;flex-wrap:wrap;padding:2px 0}
 .radio-row label{display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px}
 input[type=radio]{accent-color:var(--accent)}
-/* Checkbox */
+/* ── Checkbox ── */
 .chk-row{display:flex;align-items:center;gap:6px;padding:3px 0}
-.chk-row label{cursor:pointer;font-size:11px}
+.chk-row label{cursor:pointer;font-size:11px;color:var(--dim)}
 input[type=checkbox]{accent-color:var(--accent)}
-/* Sliders */
-.sl-row{display:flex;align-items:center;gap:8px;padding:2px 0}
-.sl-row .sl-lbl{color:var(--dim);font-size:10px;white-space:nowrap;min-width:36px}
-.sl-row .sl-val{color:var(--accent);font-weight:bold;font-size:11px;min-width:42px;text-align:right}
+/* ── Sliders ── */
+.sl-row{display:flex;align-items:center;gap:8px;padding:3px 0}
+.sl-row .sl-lbl{color:var(--dim);font-size:10px;white-space:nowrap;min-width:38px}
+.sl-row .sl-val{color:var(--accent);font-weight:700;font-size:11px;min-width:42px;text-align:right;font-family:'Consolas',monospace}
 input[type=range]{flex:1;accent-color:var(--accent);height:3px}
-/* Inputs */
-input[type=number]{background:var(--entry);color:var(--text);border:1px solid var(--panel);
-  border-radius:4px;padding:4px 6px;font-family:Consolas,monospace;font-size:11px;outline:none;width:72px}
+/* ── Number input ── */
+input[type=number]{background:var(--entry);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:4px 8px;font-family:'Consolas',monospace;font-size:11px;outline:none;width:72px;transition:border-color .15s}
 input[type=number]:focus{border-color:var(--accent)}
 .seed-row{display:flex;gap:6px;align-items:center}
-/* Buttons */
-.btn{border:none;border-radius:6px;padding:7px 16px;font-family:Consolas,monospace;
-  font-weight:bold;cursor:pointer;font-size:12px;transition:filter .1s}
+/* ── Buttons ── */
+.btn{border:none;border-radius:7px;padding:8px 18px;font-family:'Segoe UI',system-ui,sans-serif;
+  font-weight:600;cursor:pointer;font-size:12px;transition:filter .12s,transform .08s;letter-spacing:.01em}
 .btn:hover{filter:brightness(1.1)}
-.btn-save{background:var(--green);color:#1e1e2e}
-.btn-batch{background:var(--blue);color:#1e1e2e}
-.btn-rand{background:var(--panel);color:var(--text);font-size:10px;padding:4px 8px;border:1px solid var(--entry)}
-.btn-rand:hover{background:var(--entry)}
-/* Canvas — 桌面最大 360px，手機撐滿容器；aspect-ratio 維持正方形 */
-canvas{border-radius:4px;display:block;background:var(--surface);
-  width:min(100%,360px);aspect-ratio:1}
-.canvas-lbl{color:var(--dim);font-size:10px;padding:4px 0 2px;display:flex;align-items:center;gap:6px}
-/* Status */
-#status{color:var(--dim);font-size:10px;min-height:18px;padding:4px 0}
-#live-lbl{font-size:10px;color:var(--green)}
-/* Bottom bar */
-.bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 4px;border-top:1px solid var(--panel);margin-top:8px}
-/* Scrollbar */
-::-webkit-scrollbar{width:5px}
-::-webkit-scrollbar-track{background:var(--panel)}
-::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
-/* Tile toggle btns */
-.tile-btn{background:var(--entry);color:var(--text);border:none;border-radius:4px;
-  padding:2px 7px;cursor:pointer;font-family:Consolas,monospace;font-size:10px}
-.tile-btn.active{background:var(--accent);color:#1e1e2e}
-/* Progress bar */
-#progress{height:3px;background:var(--accent);transition:width .2s;border-radius:2px;margin-top:2px}
-#progress-wrap{background:var(--panel);border-radius:2px;overflow:hidden;display:none}
-/* ── Responsive ─────────────────────────────────────────── */
+.btn:active{transform:scale(.97)}
+.btn-save{background:var(--accent);color:var(--sel-text)}
+.btn-batch{background:var(--panel);color:var(--text);border:1px solid var(--border)}
+.btn-batch:hover{background:var(--entry);filter:none}
+.btn-rand{background:var(--entry);color:var(--dim);font-size:10px;padding:4px 10px;border:1px solid var(--border);border-radius:5px}
+.btn-rand:hover{color:var(--text);background:var(--panel)}
+/* ── Canvas panel card ── */
+.preview-col{min-width:0;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.panel-header{background:var(--panel);padding:6px 10px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);flex-shrink:0}
+canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-radius:0;border:none}
+/* ── Status ── */
+#status{color:var(--dim);font-size:10px;min-height:18px;padding:4px 0;font-family:'Consolas',monospace}
+#live-lbl{font-size:10px;color:var(--green);font-weight:600}
+/* ── Bottom bar ── */
+.bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0 3px;border-top:1px solid var(--border);margin-top:6px;flex-shrink:0}
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--dim)}
+/* ── Tile toggle ── */
+.tile-btn{background:var(--entry);color:var(--dim);border:1px solid var(--border);border-radius:5px;
+  padding:2px 8px;cursor:pointer;font-family:'Segoe UI',system-ui,sans-serif;font-size:10px;font-weight:500;transition:background .1s}
+.tile-btn:hover{color:var(--text)}
+.tile-btn.active{background:var(--accent);color:var(--sel-text);border-color:var(--accent)}
+/* ── Progress ── */
+#progress{height:2px;background:var(--accent);transition:width .2s;border-radius:2px;margin-top:2px}
+#progress-wrap{background:var(--border);border-radius:2px;overflow:hidden;display:none}
+/* ── Responsive ── */
 @media(max-width:640px){
-  .app{padding:10px 12px}
+  body{overflow:auto}
+  .app{padding:10px 14px;height:auto}
   h1{font-size:12px;padding-bottom:8px;margin-bottom:8px}
-  /* 手機：直排，預覽區排在控制列上方 */
-  .main{flex-direction:column;gap:10px}
+  .main{flex-direction:column;gap:10px;overflow:visible}
   .left{flex:none;width:100%;order:2}
-  .right{flex:none;width:100%;order:1}
-  /* canvas 手機全寬（min(100%, 360px) 在窄螢幕本就是 100%，明確覆蓋以防萬一） */
-  canvas{width:100%}
-  /* 縮短噪波列表高度，減少手機滾動量 */
+  /* 手機：主預覽與縮圖全部直排 */
+  .right{flex:none;width:100%;order:1;flex-direction:column;overflow:visible;max-height:none}
+  #main-panel{flex:none;width:100%}
+  #main-panel canvas{width:100%}
+  .thumbs{flex:none;width:100%;max-height:none;overflow:visible}
   #type-list{max-height:150px}
-  /* 段落標籤間距縮小 */
   .lbl{padding:6px 0 3px}
-  /* 下載按鈕在手機各佔一行 */
   .bottom{gap:8px}
   .btn-save,.btn-batch{flex:1 1 100%;text-align:center}
 }
@@ -97,92 +132,130 @@ canvas{border-radius:4px;display:block;background:var(--surface);
   <div class="main">
     <!-- ── Left panel ── -->
     <div class="left">
-      <div class="lbl">── 噪波類型</div>
-      <ul id="type-list"></ul>
+      <details class="section" open>
+        <summary class="sec-hdr">噪波類型</summary>
+        <ul id="type-list"></ul>
+      </details>
 
-      <div class="lbl">── 解析度</div>
-      <div class="radio-row" id="size-row"></div>
+      <details class="section" open>
+        <summary class="sec-hdr">解析度</summary>
+        <div class="radio-row" id="size-row" style="padding-bottom:4px"></div>
+      </details>
 
-      <div class="lbl">── 隨機種子</div>
-      <div class="seed-row">
-        <input type="number" id="seed" value="42" min="0" max="99999">
-        <button class="btn btn-rand" onclick="randomSeed()">🎲 隨機</button>
-      </div>
+      <details class="section" open>
+        <summary class="sec-hdr">隨機種子</summary>
+        <div class="seed-row" style="padding-bottom:6px">
+          <input type="number" id="seed" value="42" min="0" max="99999">
+          <button class="btn btn-rand" onclick="randomSeed()">🎲 隨機</button>
+        </div>
+      </details>
 
-      <div class="lbl">── 細節層數 (Octaves)</div>
-      <div class="sl-row">
-        <input type="range" id="octaves" min="4" max="12" value="8">
-        <span class="sl-val" id="octaves-val">8</span>
-      </div>
+      <details class="section" open>
+        <summary class="sec-hdr">參數調整</summary>
+        <div class="sl-row">
+          <span class="sl-lbl">細節層</span>
+          <input type="range" id="octaves" min="4" max="12" value="8">
+          <span class="sl-val" id="octaves-val">8</span>
+        </div>
+        <div class="sl-row">
+          <span class="sl-lbl">縮放</span>
+          <input type="range" id="zoom" min="1" max="16" value="4">
+          <span class="sl-val" id="zoom-val">1.00×</span>
+        </div>
+        <div class="radio-row" id="cmap-row" style="padding:4px 0 2px"></div>
+      </details>
 
-      <div class="lbl">── 特徵縮放 (Scale)</div>
-      <div class="sl-row">
-        <input type="range" id="zoom" min="1" max="16" value="4">
-        <span class="sl-val" id="zoom-val">1.00×</span>
-      </div>
+      <details class="section">
+        <summary class="sec-hdr">後處理</summary>
+        <div class="chk-row"><input type="checkbox" id="invert"><label for="invert">反轉</label></div>
+        <div class="sl-row">
+          <span class="sl-lbl">Gamma</span>
+          <input type="range" id="gamma" min="2" max="30" value="10">
+          <span class="sl-val" id="gamma-val">1.0×</span>
+        </div>
+        <div class="sl-row">
+          <span class="sl-lbl">亮度</span>
+          <input type="range" id="bright" min="-10" max="10" value="0">
+          <span class="sl-val" id="bright-val">0.0</span>
+        </div>
+      </details>
 
-      <div class="lbl">── 色彩映射</div>
-      <div class="radio-row" id="cmap-row"></div>
-
-      <div class="lbl">── 後處理</div>
-      <div class="chk-row"><input type="checkbox" id="invert"><label for="invert">反轉</label></div>
-      <div class="sl-row">
-        <span class="sl-lbl">Gamma</span>
-        <input type="range" id="gamma" min="2" max="30" value="10">
-        <span class="sl-val" id="gamma-val">1.0×</span>
-      </div>
-      <div class="sl-row">
-        <span class="sl-lbl">亮度</span>
-        <input type="range" id="bright" min="-10" max="10" value="0">
-        <span class="sl-val" id="bright-val">0.0</span>
-      </div>
-
-      <div class="lbl">── 批次設定</div>
-      <div class="sl-row">
-        <span class="sl-lbl">數量</span>
-        <input type="number" id="count" value="5" min="1" max="50" style="width:60px">
-      </div>
-      <div class="chk-row">
-        <input type="checkbox" id="all-types">
-        <label for="all-types">全部類型一起生成</label>
-      </div>
+      <details class="section">
+        <summary class="sec-hdr">批次下載</summary>
+        <div class="sl-row" style="padding-bottom:2px">
+          <span class="sl-lbl">數量</span>
+          <input type="number" id="count" value="5" min="1" max="50" style="width:60px">
+        </div>
+        <div class="chk-row" style="padding-bottom:6px">
+          <input type="checkbox" id="all-types">
+          <label for="all-types">全部類型一起生成</label>
+        </div>
+      </details>
     </div>
 
     <!-- ── Right panel ── -->
     <div class="right">
-      <div class="canvas-lbl">
-        <span id="live-lbl">⬤ 即時預覽</span>
-      </div>
-      <canvas id="preview" width="300" height="300"></canvas>
-
-      <!-- Tile section (hidden for flowmap) -->
-      <div id="tile-section">
-        <div class="canvas-lbl">
-          <span style="color:var(--dim)">拼貼預覽</span>
-          <span id="tile-btns"></span>
+      <!-- 即時預覽（主面板） -->
+      <div class="preview-col" id="main-panel">
+        <div class="panel-header">
+          <span id="live-lbl" style="font-size:10px;font-weight:600;color:var(--green)">⬤ 即時預覽</span>
+          <span id="res-info" class="res-info" style="margin-left:auto"></span>
         </div>
-        <canvas id="tile-canvas" width="300" height="300"></canvas>
+        <canvas id="preview" width="300" height="300"></canvas>
       </div>
 
-      <!-- Flow section (only for flowmap) -->
-      <div id="flow-section" style="display:none">
-        <div class="canvas-lbl">
-          <span style="color:var(--dim)">流動預覽</span>
-          <span style="color:#45475a;font-size:9px">粒子跟隨速度場移動</span>
+      <!-- 縮圖欄 -->
+      <div class="thumbs">
+        <!-- Tile section (hidden for flowmap) -->
+        <div id="tile-section" class="preview-col">
+          <div class="panel-header">
+            <span style="font-size:10px;font-weight:600;color:var(--dim)">拼貼</span>
+            <span id="tile-btns" style="margin-left:auto"></span>
+          </div>
+          <canvas id="tile-canvas" width="300" height="300"></canvas>
         </div>
-        <canvas id="flow-canvas" width="300" height="300"></canvas>
+
+        <!-- Flow section (only for flowmap) -->
+        <div id="flow-section" class="preview-col" style="display:none">
+          <div class="panel-header">
+            <span style="font-size:10px;font-weight:600;color:var(--dim)">流動預覽</span>
+            <span style="font-size:9px;color:var(--dim);opacity:.6;margin-left:auto">粒子速度場</span>
+          </div>
+          <canvas id="flow-canvas" width="300" height="300"></canvas>
+        </div>
+
+        <!-- Dissolve preview (hidden for flowmap) -->
+        <div id="dissolve-section" class="preview-col">
+          <div class="panel-header">
+            <span style="font-size:10px;font-weight:600;color:var(--dim)">溶解</span>
+            <input type="range" id="dissolve-t" min="0" max="100" value="50" class="hdr-slider" style="margin-left:auto">
+            <span id="dissolve-t-val" class="res-info" style="min-width:28px;text-align:right">50%</span>
+          </div>
+          <canvas id="dissolve-canvas" width="300" height="300"></canvas>
+        </div>
+
+        <!-- UV scroll preview (hidden for flowmap) -->
+        <div id="scroll-section" class="preview-col">
+          <div class="panel-header">
+            <span style="font-size:10px;font-weight:600;color:var(--dim)">UV 滾動</span>
+            <input type="range" id="scroll-speed" min="0" max="40" value="12" class="hdr-slider" style="margin-left:auto">
+            <span id="scroll-speed-val" class="res-info" style="min-width:28px;text-align:right">1.2×</span>
+          </div>
+          <canvas id="scroll-canvas" width="300" height="300"></canvas>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- ── Bottom bar ── -->
   <div class="bottom">
-    <button class="btn btn-save" onclick="saveSingle()">💾  下載單張 PNG</button>
-    <button class="btn btn-batch" onclick="batchGenerate()">📦  批次下載 ZIP</button>
-    <div style="flex:1">
-      <div id="status">就緒</div>
-      <div id="progress-wrap"><div id="progress" style="width:0%"></div></div>
-    </div>
+    <button class="btn btn-save" onclick="saveSingle()">↓ 下載 PNG</button>
+    <button class="btn btn-batch" onclick="batchGenerate()">⊞ 批次 ZIP</button>
+    <button class="btn btn-batch" onclick="shareURL()">🔗 分享連結</button>
+    <div id="status" style="color:var(--dim);font-size:10px;font-family:'Consolas',monospace">就緒</div>
+    <div id="progress-wrap" style="width:80px"><div id="progress" style="width:0%"></div></div>
+    <div style="flex:1"></div>
+    <span class="hotkey-hint">Space 重新生成 &nbsp;·&nbsp; S 下載 &nbsp;·&nbsp; R 隨機種子</span>
   </div>
 </div>
 
@@ -668,6 +741,196 @@ function generateFlowmapGray(size, octaves, seed, freqScale) {
 }
 
 // ============================================================
+// UE-style generators — polar sprites & patterns
+// ============================================================
+function generateShockwave(size, octaves, seed, freqScale) {
+  const n = fbm(size, Math.min(octaves, 6), 3, 2.0, 0.5, seed, 1);
+  const rings = Math.max(3, Math.round(8 * freqScale));
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const distort = (n[idx] - 0.5) * 0.10;
+      let w = Math.sin((r + distort) * rings * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5;
+      w = Math.pow(w, 2.5);
+      out[idx] = w * Math.max(0, 1 - r * 2);
+    }
+  }
+  return out;
+}
+
+function generateStreaks(size, octaves, seed, freqScale) {
+  const base = fbm(size, octaves, 4, 2.0, 0.5, seed, 1);
+  const N = size * size;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const a = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;   // 0..1, wraps with tiling fbm
+      cols[idx] = a * size;
+      rows[idx] = r * size * 0.35 * freqScale;               // radially stretched
+    }
+  }
+  const s = mapCoordsBilinear(base, size, size, rows, cols);
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const v = Math.pow(Math.max(0, s[idx] - 0.35) / 0.65, 1.6);
+      out[idx] = v * Math.max(0, 1 - r * 2) * Math.min(1, r * 14);
+    }
+  }
+  return normalize(out);
+}
+
+function generateVortex(size, octaves, seed, freqScale) {
+  const base = fbm(size, octaves, 3, 2.0, 0.55, seed, freqScale);
+  const N = size * size;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  const twist = 9;
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const a = Math.atan2(dy, dx) + r * twist;
+      cols[idx] = (((0.5 + Math.cos(a) * r) % 1) + 1) % 1 * size;
+      rows[idx] = (((0.5 + Math.sin(a) * r) % 1) + 1) % 1 * size;
+    }
+  }
+  const s = mapCoordsBilinear(base, size, size, rows, cols);
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      out[idx] = s[idx] * Math.max(0, 1 - r * 1.6);
+    }
+  }
+  return normalize(out);
+}
+
+function generateCaustics(size, octaves, seed, freqScale) {
+  const C = Math.max(4, Math.round(Math.max(4, octaves * 2) * freqScale));
+  const rng = new RNG(seed);
+  const pts = new Float32Array(C * 2);
+  for (let i = 0; i < C * 2; i++) pts[i] = rng.rand();
+
+  const f1 = new Float32Array(size * size).fill(Infinity);
+  const f2 = new Float32Array(size * size).fill(Infinity);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (let c = 0; c < C; c++) {
+    const pcx = pts[c * 2] + dx, pcy = pts[c * 2 + 1] + dy;
+    for (let j = 0; j < size; j++) {
+      const dyy = j / size - pcy;
+      for (let i = 0; i < size; i++) {
+        const dxx = i / size - pcx;
+        const d = Math.sqrt(dxx * dxx + dyy * dyy);
+        const idx = j * size + i;
+        if (d < f1[idx]) { f2[idx] = f1[idx]; f1[idx] = d; }
+        else if (d < f2[idx]) f2[idx] = d;
+      }
+    }
+  }
+  const out = new Float32Array(size * size);
+  let mx = 0;
+  for (let i = 0; i < out.length; i++) { out[i] = f2[i] - f1[i]; if (out[i] > mx) mx = out[i]; }
+  mx += 1e-8;
+  for (let i = 0; i < out.length; i++) out[i] = Math.pow(1 - out[i] / mx, 6);   // 反轉邊緣 → 亮焦散網
+  return out;
+}
+
+function generateElectric(size, octaves, seed, freqScale) {
+  const n = fbm(size, octaves, 3, 2.0, 0.5, seed, freqScale);
+  const out = new Float32Array(n.length);
+  for (let i = 0; i < n.length; i++) {
+    out[i] = Math.min(1, 0.02 / (Math.abs(n[i] - 0.5) + 0.012));
+  }
+  return out;
+}
+
+function generateHex(size, octaves, seed, freqScale) {
+  const C = Math.max(3, Math.round(6 * freqScale));
+  const R = Math.max(2, Math.round(C * 1.1547 / 2) * 2);   // 偶數列 → 垂直無縫
+  const mod = fbm(size, 4, 2, 2.0, 0.5, seed, 1);
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      const idx = j * size + i;
+      let x = u * C;
+      const y = v * R;
+      if (Math.floor(y) % 2) x += 0.5;
+      const fx = Math.abs(x - Math.floor(x) - 0.5) * 2;
+      const fy = Math.abs(y - Math.floor(y) - 0.5) * 2;
+      const d = Math.max(fx, fy * 0.85 + fx * 0.3);
+      const line = d > 0.80 ? 1 : 0.10;
+      out[idx] = Math.max(0, Math.min(1, line * (0.55 + mod[idx] * 0.55)));
+    }
+  }
+  return out;
+}
+
+function generateSparkle(size, octaves, seed, freqScale) {
+  const C = Math.max(8, Math.round(40 * freqScale));
+  const rng = new RNG(seed);
+  const px = new Float32Array(C), py = new Float32Array(C), sz = new Float32Array(C), br = new Float32Array(C);
+  const soft = octaves / 8;
+  for (let c = 0; c < C; c++) {
+    px[c] = rng.rand(); py[c] = rng.rand();
+    const t = rng.rand();
+    sz[c] = (0.0008 + t * t * 0.004) * soft;
+    br[c] = 0.5 + rng.rand() * 0.5;
+  }
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const vy = j / size;
+    for (let i = 0; i < size; i++) {
+      const vx = i / size;
+      const idx = j * size + i;
+      let b = 0;
+      for (let c = 0; c < C; c++) {
+        let dx = Math.abs(vx - px[c]); if (dx > 0.5) dx = 1 - dx;   // wrapped → 無縫
+        let dy = Math.abs(vy - py[c]); if (dy > 0.5) dy = 1 - dy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > sz[c] * 9) continue;
+        b += Math.exp(-d2 / sz[c]) * br[c];
+      }
+      out[idx] = Math.min(1, b);
+    }
+  }
+  return out;
+}
+
+function generateGrain(size, octaves, seed, freqScale) {
+  const block = Math.max(1, Math.round(1 / freqScale));
+  const rng = new RNG(seed);
+  const cells = Math.ceil(size / block);
+  const vals = new Float32Array(cells * cells);
+  for (let i = 0; i < vals.length; i++) vals[i] = rng.rand();
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const cj = Math.floor(j / block) % cells;
+    for (let i = 0; i < size; i++) {
+      out[j * size + i] = vals[cj * cells + Math.floor(i / block) % cells];
+    }
+  }
+  return out;
+}
+
+// ============================================================
 // Generator map
 // ============================================================
 const GENERATORS = {
@@ -687,6 +950,14 @@ const GENERATORS = {
   hetero:    generateHetero,
   distort:   generateDistort,
   flowmap:   generateFlowmapGray,
+  shockwave: generateShockwave,
+  streaks:   generateStreaks,
+  vortex:    generateVortex,
+  caustics:  generateCaustics,
+  electric:  generateElectric,
+  hex:       generateHex,
+  sparkle:   generateSparkle,
+  grain:     generateGrain,
 };
 
 // ============================================================
@@ -863,10 +1134,19 @@ const TYPE_LABELS = [
   ['hetero',    '🗻 Hetero      異質地形'],
   ['distort',   '🌪 Distort     漸進扭曲'],
   ['flowmap',   '💧 Flowmap     流動速度場'],
+  ['shockwave', '🎯 Shockwave  爆震環紋'],
+  ['streaks',   '☀ Streaks     放射速度線'],
+  ['vortex',    '🕳 Vortex      漩渦扭曲'],
+  ['caustics',  '💎 Caustics    水面焦散'],
+  ['electric',  '⚡ Electric    電弧網絡'],
+  ['hex',       '⬡ Hex         六角護盾'],
+  ['sparkle',   '⭐ Sparkle     星點閃爍'],
+  ['grain',     '🎞 Grain       細顆粒'],
 ];
 
 let currentType = 'cloud';
 let lastArr = null;          // last generated Float32Array (preview res)
+let lastOut = null;          // last postprocessed array (for dissolve / scroll)
 let lastFlowCx = null, lastFlowCy = null;
 let tileCount = 2;
 let debounceId = null;
@@ -909,17 +1189,37 @@ function randomSeed() {
 }
 
 // ============================================================
+// Type groups
+// ============================================================
+const TYPE_GROUPS = [
+  { label: 'FBM 分形', keys: ['cloud','turbulence','billow','wispy','ridged','hetero'] },
+  { label: '細胞 Voronoi', keys: ['voronoi','crackle','voronoise','caustics'] },
+  { label: '梯度 / 特效', keys: ['perlin','marble','energy','curl','electric'] },
+  { label: '扭曲 / 流場', keys: ['warp','distort','flowmap'] },
+  { label: '極座標 Sprite', keys: ['shockwave','streaks','vortex'] },
+  { label: '圖案 / 顆粒', keys: ['hex','sparkle','grain'] },
+];
+const TYPE_MAP = Object.fromEntries(TYPE_LABELS);
+
+// ============================================================
 // UI Build
 // ============================================================
 function buildUI() {
-  // Type list
+  // Type list with groups
   const ul = document.getElementById('type-list');
-  TYPE_LABELS.forEach(([key, label]) => {
-    const li = document.createElement('li');
-    li.textContent = label; li.dataset.key = key;
-    if (key === 'cloud') li.classList.add('sel');
-    li.addEventListener('click', () => selectType(key));
-    ul.appendChild(li);
+  TYPE_GROUPS.forEach(group => {
+    const hdr = document.createElement('li');
+    hdr.className = 'type-group-lbl';
+    hdr.textContent = group.label;
+    ul.appendChild(hdr);
+    group.keys.forEach(key => {
+      const label = TYPE_MAP[key] || key;
+      const li = document.createElement('li');
+      li.textContent = label; li.dataset.key = key;
+      if (key === 'cloud') li.classList.add('sel');
+      li.addEventListener('click', () => selectType(key));
+      ul.appendChild(li);
+    });
   });
 
   // Size radios
@@ -988,8 +1288,10 @@ function selectType(key) {
   document.querySelectorAll('#type-list li').forEach(li => li.classList.toggle('sel', li.dataset.key===key));
   const isFlow = key === 'flowmap';
   document.getElementById('tile-section').style.display = isFlow ? 'none' : '';
+  document.getElementById('dissolve-section').style.display = isFlow ? 'none' : '';
+  document.getElementById('scroll-section').style.display = isFlow ? 'none' : '';
   document.getElementById('flow-section').style.display = isFlow ? '' : 'none';
-  if (!isFlow) stopFlowAnim();
+  if (isFlow) stopScrollAnim(); else { stopFlowAnim(); startScrollAnim(); }
   schedulePreview();
 }
 
@@ -1005,6 +1307,7 @@ function schedulePreview() {
 function runPreview() {
   debounceId = null;
   const p = getParams();
+  updateResInfo();
   setLive('⬤ 生成中…', 'var(--accent)');
   setStatus('預覽生成中…', 'var(--accent)');
   setTimeout(() => {
@@ -1031,8 +1334,11 @@ function renderTilePreview() {
   if (!lastArr) return;
   const p = getParams();
   const out = postprocess(lastArr, p.gamma, p.invert, p.brightness);
+  lastOut = out;
   renderToCanvas(document.getElementById('preview'), out, PREVIEW_CALC, p.colormap);
   renderTiledCanvas(document.getElementById('tile-canvas'), out, PREVIEW_CALC, tileCount, p.colormap);
+  renderDissolve();
+  updateScrollSource(out, p.colormap);
 }
 
 // ============================================================
@@ -1172,10 +1478,210 @@ async function batchGenerate() {
 }
 
 // ============================================================
+// Sync canvas logical size to CSS display size (for correct pixel output)
+// ============================================================
+function syncCanvasSizes() {
+  ['preview','tile-canvas','flow-canvas','dissolve-canvas','scroll-canvas'].forEach(id => {
+    const c = document.getElementById(id);
+    const w = c.offsetWidth;
+    if (w > 0 && (c.width !== w || c.height !== w)) {
+      c.width = w;
+      c.height = w;
+    }
+  });
+}
+
+let _resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => { syncCanvasSizes(); schedulePreview(); }, 120);
+});
+
+// ============================================================
+// Dissolve preview — threshold 模擬 shader 溶解
+// ============================================================
+function renderDissolve() {
+  if (!lastOut) return;
+  const canvas = document.getElementById('dissolve-canvas');
+  const t = parseInt(document.getElementById('dissolve-t').value) / 100;
+  const edge = 0.06;
+  const n = PREVIEW_CALC;
+  const off = document.createElement('canvas');
+  off.width = n; off.height = n;
+  const ctx = off.getContext('2d');
+  const id = ctx.createImageData(n, n);
+  const d = id.data;
+  for (let i = 0; i < n * n; i++) {
+    const v = lastOut[i];
+    const o = i * 4;
+    if (v < t) {
+      d[o] = 12; d[o+1] = 12; d[o+2] = 14; d[o+3] = 255;          // 已溶解：深底
+    } else if (v < t + edge) {
+      d[o] = 255; d[o+1] = 255; d[o+2] = 255; d[o+3] = 255;       // 溶解邊緣：白色發光帶
+    } else {
+      const g = 150 + ((v - t) * 70) | 0;                          // 本體：亮灰
+      d[o] = g; d[o+1] = g; d[o+2] = g; d[o+3] = 255;
+    }
+  }
+  ctx.putImageData(id, 0, 0);
+  const dctx = canvas.getContext('2d');
+  dctx.imageSmoothingEnabled = true;
+  dctx.drawImage(off, 0, 0, canvas.width, canvas.height);
+}
+
+// ============================================================
+// UV scroll preview — 模擬 shader 內貼圖滾動
+// ============================================================
+let scrollSrc = null;        // offscreen canvas holding current texture
+let scrollRAF = null;
+let scrollOff = 0;
+let scrollLast = 0;
+
+function updateScrollSource(out, colormap) {
+  const n = PREVIEW_CALC;
+  if (!scrollSrc) { scrollSrc = document.createElement('canvas'); scrollSrc.width = n; scrollSrc.height = n; }
+  const ctx = scrollSrc.getContext('2d');
+  const id = ctx.createImageData(n, n);
+  id.data.set(applyColormap(out, colormap));
+  ctx.putImageData(id, 0, 0);
+  startScrollAnim();
+}
+
+function scrollFrame(ts) {
+  scrollRAF = requestAnimationFrame(scrollFrame);
+  if (!scrollSrc) return;
+  const canvas = document.getElementById('scroll-canvas');
+  const w = canvas.width;
+  if (!w) return;
+  const dt = scrollLast ? (ts - scrollLast) / 1000 : 0;
+  scrollLast = ts;
+  const speed = parseInt(document.getElementById('scroll-speed').value) / 10;
+  scrollOff = (scrollOff + dt * speed * w * 0.25) % w;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  const ox = scrollOff, oy = scrollOff * 0.5 % w;
+  ctx.drawImage(scrollSrc, ox - w, oy - w, w, w);
+  ctx.drawImage(scrollSrc, ox,     oy - w, w, w);
+  ctx.drawImage(scrollSrc, ox - w, oy,     w, w);
+  ctx.drawImage(scrollSrc, ox,     oy,     w, w);
+}
+
+function startScrollAnim() {
+  if (scrollRAF === null) { scrollLast = 0; scrollRAF = requestAnimationFrame(scrollFrame); }
+}
+function stopScrollAnim() {
+  if (scrollRAF !== null) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
+}
+
+// ============================================================
+// URL params — 分享與還原
+// ============================================================
+function shareURL() {
+  const p = getParams();
+  const q = new URLSearchParams({
+    type: p.type, seed: p.seed, oct: p.octaves,
+    zoom: document.getElementById('zoom').value,
+    size: p.size, cmap: p.colormap,
+    gamma: document.getElementById('gamma').value,
+    bright: document.getElementById('bright').value,
+    inv: p.invert ? 1 : 0,
+  });
+  const url = location.origin + location.pathname + '?' + q.toString();
+  const done = () => setStatus('🔗 已複製分享連結', 'var(--green)');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(done).catch(() => fallbackCopy(url, done));
+  } else {
+    fallbackCopy(url, done);
+  }
+}
+
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'absolute'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); }
+  catch(e) { setStatus('⚠ 複製失敗，請手動複製網址', 'var(--red)'); }
+  document.body.removeChild(ta);
+}
+
+function applyParamsFromURL() {
+  const q = new URLSearchParams(location.search);
+  if (![...q.keys()].length) return;
+  const type = q.get('type');
+  if (type && GENERATORS[type] !== undefined || type === 'flowmap') {
+    currentType = type;
+    document.querySelectorAll('#type-list li').forEach(li => li.classList.toggle('sel', li.dataset.key === type));
+    const isFlow = type === 'flowmap';
+    document.getElementById('tile-section').style.display = isFlow ? 'none' : '';
+    document.getElementById('dissolve-section').style.display = isFlow ? 'none' : '';
+    document.getElementById('scroll-section').style.display = isFlow ? 'none' : '';
+    document.getElementById('flow-section').style.display = isFlow ? '' : 'none';
+  }
+  if (q.get('seed'))  document.getElementById('seed').value = parseInt(q.get('seed')) || 42;
+  if (q.get('oct')) {
+    document.getElementById('octaves').value = q.get('oct');
+    document.getElementById('octaves-val').textContent = q.get('oct');
+  }
+  if (q.get('zoom')) {
+    document.getElementById('zoom').value = q.get('zoom');
+    document.getElementById('zoom-val').textContent = (q.get('zoom')/4).toFixed(2)+'×';
+  }
+  if (q.get('size')) {
+    const r = document.querySelector(`input[name=size][value="${q.get('size')}"]`);
+    if (r) r.checked = true;
+  }
+  if (q.get('cmap')) {
+    const r = document.querySelector(`input[name=cmap][value="${q.get('cmap')}"]`);
+    if (r) r.checked = true;
+  }
+  if (q.get('gamma')) {
+    document.getElementById('gamma').value = q.get('gamma');
+    document.getElementById('gamma-val').textContent = (q.get('gamma')/10).toFixed(1)+'×';
+  }
+  if (q.get('bright')) {
+    const v = parseInt(q.get('bright'));
+    document.getElementById('bright').value = v;
+    document.getElementById('bright-val').textContent = v===0?'0.0':(v>0?'+':'')+(v/10).toFixed(1);
+  }
+  if (q.get('inv') === '1') document.getElementById('invert').checked = true;
+}
+
+// ============================================================
+// Resolution info display
+// ============================================================
+function updateResInfo() {
+  const p = getParams();
+  const el = document.getElementById('res-info');
+  if (el) el.textContent = p.type + ' · ' + p.size + 'px · seed ' + p.seed;
+}
+
+// ============================================================
+// Keyboard shortcuts
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.code === 'Space') { e.preventDefault(); schedulePreview(); }
+  if (e.key === 's' || e.key === 'S') saveSingle();
+  if (e.key === 'r' || e.key === 'R') randomSeed();
+});
+
+// Dissolve / scroll slider listeners
+document.getElementById('dissolve-t').addEventListener('input', e => {
+  document.getElementById('dissolve-t-val').textContent = e.target.value + '%';
+  renderDissolve();
+});
+document.getElementById('scroll-speed').addEventListener('input', e => {
+  document.getElementById('scroll-speed-val').textContent = (e.target.value/10).toFixed(1)+'×';
+});
+
 // Init
 // ============================================================
 buildUI();
+applyParamsFromURL();
+syncCanvasSizes();
+updateResInfo();
 schedulePreview();
+startScrollAnim();
 </script>
 </body>
 </html>
