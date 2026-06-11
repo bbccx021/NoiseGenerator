@@ -40,6 +40,12 @@ details.section:not([open])>summary::after{content:'▸'}
 details.section>summary:hover{color:var(--text)}
 /* Type group label inside list */
 .type-group-lbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);padding:6px 10px 3px;opacity:.65;pointer-events:none;list-style:none}
+/* Type category tabs */
+#type-tabs{display:flex;gap:4px;margin-bottom:6px}
+.type-tab{flex:1;background:var(--entry);color:var(--dim);border:1px solid var(--border);border-radius:6px;
+  padding:5px 0;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:.04em;transition:background .12s,color .12s}
+.type-tab:hover{color:var(--text);background:var(--panel)}
+.type-tab.active{background:var(--accent);color:var(--sel-text);border-color:var(--accent)}
 /* Bottom info strip */
 .res-info{color:var(--dim);font-size:10px;font-family:'Consolas',monospace;white-space:nowrap}
 .hotkey-hint{color:var(--dim);font-size:10px;opacity:.5;white-space:nowrap;display:none}
@@ -133,7 +139,8 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
     <!-- ── Left panel ── -->
     <div class="left">
       <details class="section" open>
-        <summary class="sec-hdr">噪波類型</summary>
+        <summary class="sec-hdr">貼圖類型</summary>
+        <div id="type-tabs"></div>
         <ul id="type-list"></ul>
       </details>
 
@@ -744,7 +751,8 @@ function generateFlowmapGray(size, octaves, seed, freqScale) {
 // UE-style generators — polar sprites & patterns
 // ============================================================
 function generateShockwave(size, octaves, seed, freqScale) {
-  const n = fbm(size, Math.min(octaves, 6), 3, 2.0, 0.5, seed, 1);
+  const n   = fbm(size, Math.min(octaves, 6), 3, 2.0, 0.5, seed, 1);
+  const ang = fbm(size, 4, 5, 2.0, 0.5, seed + 77, 1);     // 角度方向亮度變化
   const rings = Math.max(3, Math.round(8 * freqScale));
   const out = new Float32Array(size * size);
   for (let j = 0; j < size; j++) {
@@ -754,9 +762,15 @@ function generateShockwave(size, octaves, seed, freqScale) {
       const idx = j * size + i;
       const r = Math.sqrt(dx * dx + dy * dy);
       const distort = (n[idx] - 0.5) * 0.10;
-      let w = Math.sin((r + distort) * rings * Math.PI * 2 - Math.PI / 2) * 0.5 + 0.5;
-      w = Math.pow(w, 2.5);
-      out[idx] = w * Math.max(0, 1 - r * 2);
+      // 鋸齒波環形剖面：鋒利前緣 + 漸消尾跡，比正弦環更像爆震波
+      let s = ((r + distort) * rings) % 1; if (s < 0) s += 1;
+      let w = Math.pow(1 - s, 2.8) * 0.75 + Math.pow(1 - s, 14) * 0.55;
+      // 前緣抗鋸齒：在 3% 環距內平滑淡入
+      let aa = Math.min(1, s / 0.03);
+      w *= aa * aa * (3 - 2 * aa);
+      w *= 0.65 + ang[idx] * 0.7;                          // 環上明暗不均，更自然
+      const fall = Math.pow(Math.max(0, 1 - r * 2), 1.15);
+      out[idx] = Math.min(1, w * fall);
     }
   }
   return out;
@@ -764,8 +778,10 @@ function generateShockwave(size, octaves, seed, freqScale) {
 
 function generateStreaks(size, octaves, seed, freqScale) {
   const base = fbm(size, octaves, 4, 2.0, 0.5, seed, 1);
+  const fine = fbm(size, Math.max(4, octaves - 2), 8, 2.0, 0.45, seed + 31, 1);
   const N = size * size;
   const rows = new Float32Array(N), cols = new Float32Array(N);
+  const rows2 = new Float32Array(N);
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
     for (let i = 0; i < size; i++) {
@@ -773,11 +789,13 @@ function generateStreaks(size, octaves, seed, freqScale) {
       const idx = j * size + i;
       const r = Math.sqrt(dx * dx + dy * dy);
       const a = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;   // 0..1, wraps with tiling fbm
-      cols[idx] = a * size;
-      rows[idx] = r * size * 0.35 * freqScale;               // radially stretched
+      cols[idx]  = a * size;
+      rows[idx]  = r * size * 0.35 * freqScale;              // 粗線束（徑向拉伸）
+      rows2[idx] = r * size * 0.12 * freqScale;              // 細線束（拉得更長）
     }
   }
-  const s = mapCoordsBilinear(base, size, size, rows, cols);
+  const s1 = mapCoordsBilinear(base, size, size, rows,  cols);
+  const s2 = mapCoordsBilinear(fine, size, size, rows2, cols);
   const out = new Float32Array(N);
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
@@ -785,7 +803,9 @@ function generateStreaks(size, octaves, seed, freqScale) {
       const dx = i / size - 0.5;
       const idx = j * size + i;
       const r = Math.sqrt(dx * dx + dy * dy);
-      const v = Math.pow(Math.max(0, s[idx] - 0.35) / 0.65, 1.6);
+      const v1 = Math.pow(Math.max(0, s1[idx] - 0.32) / 0.68, 1.5);
+      const v2 = Math.pow(Math.max(0, s2[idx] - 0.45) / 0.55, 2.2);
+      const v = 1 - (1 - v1 * 0.85) * (1 - v2 * 0.75);       // screen 疊加：粗束+細絲
       out[idx] = v * Math.max(0, 1 - r * 2) * Math.min(1, r * 14);
     }
   }
@@ -816,21 +836,25 @@ function generateVortex(size, octaves, seed, freqScale) {
       const dx = i / size - 0.5;
       const idx = j * size + i;
       const r = Math.sqrt(dx * dx + dy * dy);
-      out[idx] = s[idx] * Math.max(0, 1 - r * 1.6);
+      // S 曲線拉開旋臂對比
+      let v = s[idx];
+      v = v * v * (3 - 2 * v);
+      v = Math.pow(v, 1.35);
+      const fall = Math.pow(Math.max(0, 1 - r * 1.6), 1.25);
+      const core = Math.exp(-r * r / 0.004) * 0.45;          // 中心亮核
+      out[idx] = v * fall + core;
     }
   }
   return normalize(out);
 }
 
-function generateCaustics(size, octaves, seed, freqScale) {
-  const C = Math.max(4, Math.round(Math.max(4, octaves * 2) * freqScale));
+function causticsLayer(size, count, seed) {
   const rng = new RNG(seed);
-  const pts = new Float32Array(C * 2);
-  for (let i = 0; i < C * 2; i++) pts[i] = rng.rand();
-
+  const pts = new Float32Array(count * 2);
+  for (let i = 0; i < count * 2; i++) pts[i] = rng.rand();
   const f1 = new Float32Array(size * size).fill(Infinity);
   const f2 = new Float32Array(size * size).fill(Infinity);
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (let c = 0; c < C; c++) {
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (let c = 0; c < count; c++) {
     const pcx = pts[c * 2] + dx, pcy = pts[c * 2 + 1] + dy;
     for (let j = 0; j < size; j++) {
       const dyy = j / size - pcy;
@@ -847,15 +871,37 @@ function generateCaustics(size, octaves, seed, freqScale) {
   let mx = 0;
   for (let i = 0; i < out.length; i++) { out[i] = f2[i] - f1[i]; if (out[i] > mx) mx = out[i]; }
   mx += 1e-8;
-  for (let i = 0; i < out.length; i++) out[i] = Math.pow(1 - out[i] / mx, 6);   // 反轉邊緣 → 亮焦散網
+  for (let i = 0; i < out.length; i++) out[i] = 1 - out[i] / mx;
+  return out;
+}
+
+function generateCaustics(size, octaves, seed, freqScale) {
+  const C = Math.max(4, Math.round(Math.max(4, octaves * 2) * freqScale));
+  const a = causticsLayer(size, C, seed);                  // 主焦散網
+  const b = causticsLayer(size, Math.round(C * 2.2), seed + 913);  // 細焦散網
+  const mod = fbm(size, 4, 2, 2.0, 0.5, seed + 55, 1);     // 有機亮度起伏
+  const out = new Float32Array(size * size);
+  for (let i = 0; i < out.length; i++) {
+    const va = Math.pow(a[i], 5.5);
+    const vb = Math.pow(b[i], 7) * 0.6;
+    let v = 1 - (1 - va) * (1 - vb);                       // screen 疊加兩層
+    v *= 0.78 + mod[i] * 0.45;                             // 水面波動的明暗
+    out[i] = Math.min(1, v);
+  }
   return out;
 }
 
 function generateElectric(size, octaves, seed, freqScale) {
-  const n = fbm(size, octaves, 3, 2.0, 0.5, seed, freqScale);
-  const out = new Float32Array(n.length);
-  for (let i = 0; i < n.length; i++) {
-    out[i] = Math.min(1, 0.02 / (Math.abs(n[i] - 0.5) + 0.012));
+  const n1 = fbm(size, octaves, 3, 2.0, 0.5, seed, freqScale);             // 主幹
+  const n2 = fbm(size, Math.max(4, octaves - 2), 6, 2.0, 0.45, seed + 19, freqScale);  // 細枝
+  const out = new Float32Array(n1.length);
+  for (let i = 0; i < n1.length; i++) {
+    const d1 = Math.abs(n1[i] - 0.5);
+    const d2 = Math.abs(n2[i] - 0.5);
+    const v1 = Math.min(1, 0.018 / (d1 + 0.010));
+    const v2 = Math.min(1, 0.010 / (d2 + 0.009)) * 0.55;
+    const glow = Math.pow(Math.max(0, 1 - d1 * 5), 2.5) * 0.22;            // 主幹周圍輝光
+    out[i] = Math.min(1, 1 - (1 - v1) * (1 - v2) + glow);
   }
   return out;
 }
@@ -876,8 +922,14 @@ function generateHex(size, octaves, seed, freqScale) {
       const fx = Math.abs(x - Math.floor(x) - 0.5) * 2;
       const fy = Math.abs(y - Math.floor(y) - 0.5) * 2;
       const d = Math.max(fx, fy * 0.85 + fx * 0.3);
-      const line = d > 0.80 ? 1 : 0.10;
-      out[idx] = Math.max(0, Math.min(1, line * (0.55 + mod[idx] * 0.55)));
+      // 抗鋸齒線條：以像素為單位的 smoothstep 取代硬切
+      const aa = (C / size) * 3;
+      let t = (d - (0.80 - aa)) / (aa * 2);
+      t = Math.max(0, Math.min(1, t));
+      const line = t * t * (3 - 2 * t);
+      const inner = 0.06 + Math.pow(d, 2.5) * 0.14;          // 格內微漸層（朝邊緣微亮）
+      const vfin = Math.max(line, inner);
+      out[idx] = Math.max(0, Math.min(1, vfin * (0.55 + mod[idx] * 0.55)));
     }
   }
   return out;
@@ -905,8 +957,14 @@ function generateSparkle(size, octaves, seed, freqScale) {
         let dx = Math.abs(vx - px[c]); if (dx > 0.5) dx = 1 - dx;   // wrapped → 無縫
         let dy = Math.abs(vy - py[c]); if (dy > 0.5) dy = 1 - dy;
         const d2 = dx * dx + dy * dy;
-        if (d2 > sz[c] * 9) continue;
-        b += Math.exp(-d2 / sz[c]) * br[c];
+        if (d2 > sz[c] * 22) continue;
+        const core = Math.exp(-d2 / sz[c]);
+        // 十字星芒：沿 X/Y 軸的細長衰減（僅較亮的點才有星芒）
+        const flare = br[c] > 0.75
+          ? (Math.exp(-(dx * dx) / (sz[c] * 10) - (dy * dy) / (sz[c] * 0.04)) +
+             Math.exp(-(dy * dy) / (sz[c] * 10) - (dx * dx) / (sz[c] * 0.04))) * 0.3
+          : 0;
+        b += (core + flare) * br[c];
       }
       out[idx] = Math.min(1, b);
     }
@@ -919,12 +977,269 @@ function generateGrain(size, octaves, seed, freqScale) {
   const rng = new RNG(seed);
   const cells = Math.ceil(size / block);
   const vals = new Float32Array(cells * cells);
-  for (let i = 0; i < vals.length; i++) vals[i] = rng.rand();
+  for (let i = 0; i < vals.length; i++) vals[i] = (rng.rand() + rng.rand()) * 0.5;  // 三角分布，較像底片粒
+  // 低頻粗粒層，打破均勻感
+  const coarse = fbm(size, 4, 32, 2.0, 0.5, seed + 5, 1);
   const out = new Float32Array(size * size);
   for (let j = 0; j < size; j++) {
     const cj = Math.floor(j / block) % cells;
     for (let i = 0; i < size; i++) {
-      out[j * size + i] = vals[cj * cells + Math.floor(i / block) % cells];
+      const idx = j * size + i;
+      const fine = vals[cj * cells + Math.floor(i / block) % cells];
+      out[idx] = Math.max(0, Math.min(1, fine * 0.8 + (coarse[idx] - 0.5) * 0.35 + 0.1));
+    }
+  }
+  return out;
+}
+
+// ============================================================
+// VFX sprite generators — 斬擊 / 拖尾 / 光束 / 光暈 / 閃電 / 火焰 / 煙團 / 魔法陣
+// ============================================================
+function sstep(e0, e1, x) {
+  const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+}
+
+function segDist(px, py, ax, ay, bx, by) {
+  const vx = bx - ax, vy = by - ay;
+  const wx = px - ax, wy = py - ay;
+  const L2 = vx * vx + vy * vy;
+  let t = L2 > 0 ? (wx * vx + wy * vy) / L2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const dx = px - (ax + vx * t), dy = py - (ay + vy * t);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function generateGlow(size, octaves, seed, freqScale) {
+  const k = 1 / Math.max(0.25, freqScale);
+  const sCore = 0.018 * k * k;
+  const sHalo = sCore * 5;
+  const haloW = 0.12 + octaves * 0.02;
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const r2 = dx * dx + dy * dy;
+      out[j * size + i] = Math.min(1, Math.exp(-r2 / sCore) + Math.exp(-r2 / sHalo) * haloW);
+    }
+  }
+  return out;
+}
+
+function generateSlash(size, octaves, seed, freqScale) {
+  const base = fbm(size, octaves, 4, 2.0, 0.5, seed, 1);
+  const N = size * size;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const a = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
+      cols[idx] = a * size * 0.25;                          // 沿弧向拉長
+      rows[idx] = r * size * 2.2 * freqScale;               // 跨半徑細變化 → 拖絲
+    }
+  }
+  const str = mapCoordsBilinear(base, size, size, rows, cols);
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const a = Math.abs(Math.atan2(dy, dx));
+      const band = sstep(0.20, 0.30, r) * (1 - sstep(0.42, 0.52, r));
+      const arcT = 1 - sstep(1.3, 2.5, a);
+      const edgeB = sstep(0.30, 0.45, r);                   // 外緣較利較亮
+      const v = band * arcT * (0.35 + edgeB * 1.1) * (0.5 + str[idx] * 0.9);
+      out[idx] = Math.max(0, Math.min(1, v));
+    }
+  }
+  return out;
+}
+
+function generateTrail(size, octaves, seed, freqScale) {
+  const base = fbm(size, octaves, 3, 2.0, 0.5, seed, 1);
+  const N = size * size;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    for (let i = 0; i < size; i++) {
+      const idx = j * size + i;
+      cols[idx] = (i / size) * size * 0.15;                 // 沿軌跡方向拉長
+      rows[idx] = (j / size) * size * (1.2 * freqScale + 0.6);
+    }
+  }
+  const str = mapCoordsBilinear(base, size, size, rows, cols);
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    const band = Math.exp(-Math.pow((v - 0.5) / 0.15, 2));
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      const idx = j * size + i;
+      const head = Math.pow(1 - u, 1.6);
+      const tip = sstep(0, 0.05, u);
+      out[idx] = Math.max(0, Math.min(1, head * band * tip * (0.5 + str[idx] * 0.9)));
+    }
+  }
+  return out;
+}
+
+function generateBeam(size, octaves, seed, freqScale) {
+  const n = fbm(size, octaves, 4, 2.0, 0.5, seed, freqScale);
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    const core = Math.exp(-Math.pow((v - 0.5) / 0.04, 2));
+    const halo = Math.exp(-Math.pow((v - 0.5) / 0.16, 2)) * 0.42;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      const idx = j * size + i;
+      const cap = sstep(0, 0.08, u) * sstep(0, 0.08, 1 - u);
+      const m = 0.7 + (n[idx] - 0.5) * 0.7;
+      out[idx] = Math.max(0, Math.min(1, (core + halo) * cap * m));
+    }
+  }
+  return out;
+}
+
+function generateBolt(size, octaves, seed, freqScale) {
+  const rng = new RNG(seed);
+  const segs = [];
+  const wMain = 0.008 / Math.max(0.5, freqScale);
+  const segCount = Math.max(6, Math.min(14, octaves + 2));
+  function mk(x0, y0, x1, y1, count, w, b, depth) {
+    let px = x0, py = y0;
+    for (let i = 1; i <= count; i++) {
+      const t = i / count;
+      const nx = x0 + (x1 - x0) * t + (rng.rand() - 0.5) * 0.20 * (1 - t * 0.3);
+      const ny = y0 + (y1 - y0) * t;
+      segs.push({ ax: px, ay: py, bx: nx, by: ny, w, b });
+      if (depth < 2 && i > 1 && i < count - 1 && rng.rand() > 0.62) {
+        mk(px, py, px + (rng.rand() - 0.5) * 0.7, py + 0.35, 4, w * 0.55, b * 0.5, depth + 1);
+      }
+      px = nx; py = ny;
+    }
+  }
+  mk(0.5, 0.02, 0.5, 0.98, segCount, wMain, 1, 0);
+
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const py = j / size;
+    for (let i = 0; i < size; i++) {
+      const px = i / size;
+      let v = 0;
+      for (let s = 0; s < segs.length; s++) {
+        const sg = segs[s];
+        const d = segDist(px, py, sg.ax, sg.ay, sg.bx, sg.by);
+        if (d > sg.w * 24) continue;
+        v += sg.b * (Math.exp(-(d * d) / (sg.w * sg.w)) + Math.exp(-(d * d) / (sg.w * sg.w * 36)) * 0.22);
+      }
+      out[j * size + i] = Math.min(1, v);
+    }
+  }
+  return out;
+}
+
+function generateFlame(size, octaves, seed, freqScale) {
+  const n = fbm(size, octaves, 4, 2.0, 0.5, seed, freqScale);
+  const out = new Float32Array(size * size);
+  const baseY = 0.80, hgt = 0.62;
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    const rel = Math.max(0, 1 - (baseY - v) / hgt);        // 1=底部 0=頂端
+    const inBody = v < baseY && v > baseY - hgt;
+    const w = 0.21 * Math.pow(Math.max(0.001, rel), 0.65) + 0.02;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      const idx = j * size + i;
+      if (!inBody) { out[idx] = 0; continue; }
+      const dx = (u - 0.5) / w;
+      const body = Math.max(0, 1 - dx * dx);
+      // 頂端被噪波侵蝕 → 火舌
+      const erosion = n[idx] * Math.pow(1 - rel, 1.3) * 1.35;
+      let s = body * (1 + (n[idx] - 0.5) * 0.3) - erosion;
+      s = Math.max(0, s);
+      const core = Math.exp(-((u - 0.5) * (u - 0.5)) / 0.010 - (v - 0.70) * (v - 0.70) / 0.018) * 0.85;
+      out[idx] = Math.min(1, Math.pow(s, 0.8) + core * Math.min(1, s * 3));
+    }
+  }
+  return out;
+}
+
+function generatePuff(size, octaves, seed, freqScale) {
+  const n1 = fbm(size, octaves, 4, 2.0, 0.5, seed, freqScale);
+  const n2 = fbm(size, Math.max(4, octaves - 2), 8, 2.0, 0.45, seed + 9, freqScale);
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const edge = 0.33 + (n1[idx] - 0.5) * 0.24;          // 噪波侵蝕的軟邊
+      const body = 1 - sstep(edge - 0.16, edge + 0.05, r);
+      out[idx] = Math.max(0, Math.min(1, body * (0.55 + n2[idx] * 0.55)));
+    }
+  }
+  return out;
+}
+
+function generateMagicCircle(size, octaves, seed, freqScale) {
+  const rng = new RNG(seed);
+  const RM = Math.max(0.55, Math.min(1.2, freqScale));     // 縮放整體半徑
+  const r1 = 0.44 * RM, r2 = 0.40 * RM, r3 = 0.27 * RM, rDash = 0.315 * RM, rRune = 0.355 * RM;
+  const ticks = Math.max(12, octaves * 3);
+  // 六芒星弦線
+  const segs = [];
+  const rot = rng.rand() * Math.PI * 2;
+  for (let k = 0; k < 6; k++) {
+    const a1 = k / 6 * Math.PI * 2 + rot, a2 = (k + 2) / 6 * Math.PI * 2 + rot;
+    segs.push({ ax: 0.5 + Math.cos(a1) * r3, ay: 0.5 + Math.sin(a1) * r3,
+                bx: 0.5 + Math.cos(a2) * r3, by: 0.5 + Math.sin(a2) * r3, w: 0.0024, b: 0.85 });
+  }
+  // 符文短劃
+  for (let s = 0; s < 12; s++) {
+    const a = s / 12 * Math.PI * 2 + 0.26 + rot;
+    const cx = 0.5 + Math.cos(a) * rRune, cy = 0.5 + Math.sin(a) * rRune;
+    for (let k = 0; k < 3; k++) {
+      segs.push({ ax: cx + (rng.rand() - 0.5) * 0.034, ay: cy + (rng.rand() - 0.5) * 0.034,
+                  bx: cx + (rng.rand() - 0.5) * 0.034, by: cy + (rng.rand() - 0.5) * 0.034, w: 0.0020, b: 0.9 });
+    }
+  }
+  const ring = (r, r0, lw) => Math.exp(-((r - r0) * (r - r0)) / (lw * lw));
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const a = Math.atan2(dy, dx) + Math.PI;              // 0..2π
+      let v = ring(r, r1, 0.005);
+      v = Math.max(v, ring(r, r2, 0.0028) * 0.9);
+      v = Math.max(v, ring(r, r3, 0.0036) * 0.9);
+      // 虛線環
+      const ph = (a / (Math.PI * 2) * 30) % 1;
+      const dash = sstep(0.02, 0.10, ph) * (1 - sstep(0.50, 0.58, ph));
+      v = Math.max(v, ring(r, rDash, 0.0022) * 0.8 * dash);
+      // 外環刻度
+      const tph = (a / (Math.PI * 2) * ticks) % 1;
+      const tick = Math.max(1 - sstep(0.04, 0.10, tph), sstep(0.90, 0.96, tph));
+      const bandT = sstep(r2 - 0.004, r2, r) * (1 - sstep(r1, r1 + 0.004, r));
+      v = Math.max(v, tick * bandT * 0.95);
+      // 線段（六芒星 + 符文）
+      for (let s = 0; s < segs.length; s++) {
+        const sg = segs[s];
+        const ddx = dx + 0.5 - sg.ax, ddy = dy + 0.5 - sg.ay;
+        if (ddx * ddx + ddy * ddy > 0.02 && segDist(dx + 0.5, dy + 0.5, sg.ax, sg.ay, sg.bx, sg.by) > 0.01) continue;
+        const d = segDist(dx + 0.5, dy + 0.5, sg.ax, sg.ay, sg.bx, sg.by);
+        v = Math.max(v, sg.b * Math.exp(-(d * d) / (sg.w * sg.w)));
+      }
+      out[idx] = Math.min(1, v * (1 - sstep(0.46 * RM + 0.02, 0.5, r)));
     }
   }
   return out;
@@ -958,6 +1273,14 @@ const GENERATORS = {
   hex:       generateHex,
   sparkle:   generateSparkle,
   grain:     generateGrain,
+  glow:      generateGlow,
+  slash:     generateSlash,
+  trail:     generateTrail,
+  beam:      generateBeam,
+  bolt:      generateBolt,
+  flame:     generateFlame,
+  puff:      generatePuff,
+  magic:     generateMagicCircle,
 };
 
 // ============================================================
@@ -1006,7 +1329,7 @@ function postprocess(arr, gamma=1.0, invert=false, brightness=0.0) {
 // Canvas rendering
 // ============================================================
 const PREVIEW_SIZE = 300;
-const PREVIEW_CALC = 128;
+const PREVIEW_CALC = 256;
 
 function arrToImageData(ctx, arr, size, colormap) {
   const id = ctx.createImageData(size, size);
@@ -1142,6 +1465,14 @@ const TYPE_LABELS = [
   ['hex',       '⬡ Hex         六角護盾'],
   ['sparkle',   '⭐ Sparkle     星點閃爍'],
   ['grain',     '🎞 Grain       細顆粒'],
+  ['glow',      '🔆 Glow        柔光光暈'],
+  ['slash',     '🗡 Slash       斬擊月牙'],
+  ['trail',     '🌠 Trail       拖尾漸層'],
+  ['beam',      '🔦 Beam        能量光束'],
+  ['bolt',      '🌩 Bolt        閃電束'],
+  ['flame',     '🔥 Flame       火焰輪廓'],
+  ['puff',      '💨 Puff        煙團'],
+  ['magic',     '🔮 Magic       魔法陣'],
 ];
 
 let currentType = 'cloud';
@@ -1198,29 +1529,75 @@ const TYPE_GROUPS = [
   { label: '扭曲 / 流場', keys: ['warp','distort','flowmap'] },
   { label: '極座標 Sprite', keys: ['shockwave','streaks','vortex'] },
   { label: '圖案 / 顆粒', keys: ['hex','sparkle','grain'] },
+  { label: '特效 Sprite', keys: ['glow','slash','trail','beam','bolt','flame','puff','magic'] },
 ];
 const TYPE_MAP = Object.fromEntries(TYPE_LABELS);
+
+// ============================================================
+// Type category tabs — 一個分頁只顯示同一大類
+// ============================================================
+const TYPE_TABS = [
+  { label: '噪波', groups: ['FBM 分形','細胞 Voronoi','梯度 / 特效','扭曲 / 流場'] },
+  { label: '圖案', groups: ['極座標 Sprite','圖案 / 顆粒'] },
+  { label: '特效', groups: ['特效 Sprite'] },
+];
+let activeTab = 0;
+
+function tabOfType(key) {
+  for (let ti = 0; ti < TYPE_TABS.length; ti++) {
+    for (const g of TYPE_GROUPS) {
+      if (TYPE_TABS[ti].groups.includes(g.label) && g.keys.includes(key)) return ti;
+    }
+  }
+  return 0;
+}
+
+function buildTypeTabs() {
+  const bar = document.getElementById('type-tabs');
+  bar.innerHTML = '';
+  TYPE_TABS.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.className = 'type-tab' + (i === activeTab ? ' active' : '');
+    b.textContent = t.label;
+    b.addEventListener('click', () => {
+      activeTab = i;
+      buildTypeTabs();
+      buildTypeList();
+    });
+    bar.appendChild(b);
+  });
+}
+
+function buildTypeList() {
+  const ul = document.getElementById('type-list');
+  ul.innerHTML = '';
+  const tab = TYPE_TABS[activeTab];
+  const groups = TYPE_GROUPS.filter(g => tab.groups.includes(g.label));
+  groups.forEach(group => {
+    if (groups.length > 1) {                       // 單一群組的分頁不顯示小標
+      const hdr = document.createElement('li');
+      hdr.className = 'type-group-lbl';
+      hdr.textContent = group.label;
+      ul.appendChild(hdr);
+    }
+    group.keys.forEach(key => {
+      const label = TYPE_MAP[key] || key;
+      const li = document.createElement('li');
+      li.textContent = label; li.dataset.key = key;
+      if (key === currentType) li.classList.add('sel');
+      li.addEventListener('click', () => selectType(key));
+      ul.appendChild(li);
+    });
+  });
+}
 
 // ============================================================
 // UI Build
 // ============================================================
 function buildUI() {
-  // Type list with groups
-  const ul = document.getElementById('type-list');
-  TYPE_GROUPS.forEach(group => {
-    const hdr = document.createElement('li');
-    hdr.className = 'type-group-lbl';
-    hdr.textContent = group.label;
-    ul.appendChild(hdr);
-    group.keys.forEach(key => {
-      const label = TYPE_MAP[key] || key;
-      const li = document.createElement('li');
-      li.textContent = label; li.dataset.key = key;
-      if (key === 'cloud') li.classList.add('sel');
-      li.addEventListener('click', () => selectType(key));
-      ul.appendChild(li);
-    });
-  });
+  // Type tabs + list
+  buildTypeTabs();
+  buildTypeList();
 
   // Size radios
   const sr = document.getElementById('size-row');
@@ -1610,7 +1987,9 @@ function applyParamsFromURL() {
   const type = q.get('type');
   if (type && GENERATORS[type] !== undefined || type === 'flowmap') {
     currentType = type;
-    document.querySelectorAll('#type-list li').forEach(li => li.classList.toggle('sel', li.dataset.key === type));
+    activeTab = tabOfType(type);
+    buildTypeTabs();
+    buildTypeList();
     const isFlow = type === 'flowmap';
     document.getElementById('tile-section').style.display = isFlow ? 'none' : '';
     document.getElementById('dissolve-section').style.display = isFlow ? 'none' : '';
