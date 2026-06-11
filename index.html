@@ -1109,35 +1109,94 @@ function generateBeam(size, octaves, seed, freqScale) {
 function generateBolt(size, octaves, seed, freqScale) {
   const rng = new RNG(seed);
   const segs = [];
-  const wMain = 0.008 / Math.max(0.5, freqScale);
-  const segCount = Math.max(6, Math.min(14, octaves + 2));
-  function mk(x0, y0, x1, y1, count, w, b, depth) {
-    let px = x0, py = y0;
-    for (let i = 1; i <= count; i++) {
-      const t = i / count;
-      const nx = x0 + (x1 - x0) * t + (rng.rand() - 0.5) * 0.20 * (1 - t * 0.3);
-      const ny = y0 + (y1 - y0) * t;
-      segs.push({ ax: px, ay: py, bx: nx, by: ny, w, b });
-      if (depth < 2 && i > 1 && i < count - 1 && rng.rand() > 0.62) {
-        mk(px, py, px + (rng.rand() - 0.5) * 0.7, py + 0.35, 4, w * 0.55, b * 0.5, depth + 1);
+  const wBase = 0.0075 / Math.max(0.5, freqScale);
+
+  // 中點位移碎形路徑：多尺度鋸齒，比均勻折線自然
+  function fractalPath(x0, y0, x1, y1, levels, jag) {
+    let pts = [{ x: x0, y: y0 }, { x: x1, y: y1 }];
+    for (let l = 0; l < levels; l++) {
+      const np = [pts[0]];
+      for (let k = 1; k < pts.length; k++) {
+        const a = pts[k - 1], b = pts[k];
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1e-6;
+        const disp = (rng.rand() - 0.5) * jag * len * 2;
+        np.push({ x: mx - dy / len * disp, y: my + dx / len * disp });
+        np.push(b);
       }
-      px = nx; py = ny;
+      pts = np;
+    }
+    return pts;
+  }
+  // 折線轉線段：寬度與亮度沿路徑漸變（錐形變細）＋每段閃爍抖動
+  function addBolt(pts, w0, w1, b0, b1) {
+    const n = pts.length - 1;
+    for (let k = 0; k < n; k++) {
+      const t = k / n;
+      segs.push({
+        ax: pts[k].x, ay: pts[k].y, bx: pts[k + 1].x, by: pts[k + 1].y,
+        w: Math.max(1e-4, w0 + (w1 - w0) * t),
+        b: (b0 + (b1 - b0) * t) * (0.8 + rng.rand() * 0.35),
+      });
     }
   }
-  mk(0.5, 0.02, 0.5, 0.98, segCount, wMain, 1, 0);
 
+  // 主幹
+  const xTop = 0.5 + (rng.rand() - 0.5) * 0.10;
+  const xBot = 0.5 + (rng.rand() - 0.5) * 0.16;
+  const main = fractalPath(xTop, 0.02, xBot, 0.98, 5, 0.5);
+  addBolt(main, wBase, wBase * 0.45, 1.0, 0.85);
+
+  // 分支與子分支：沿主方向斜出，往末端收細淡出（少而短，主幹才清楚）
+  const nBr = 2 + Math.floor(rng.rand() * 2) + Math.round(octaves / 8);
+  for (let b = 0; b < nBr; b++) {
+    const pi = 3 + Math.floor(rng.rand() * (main.length - 8));
+    const p = main[pi];
+    const dir = rng.rand() < 0.5 ? -1 : 1;
+    const ex = p.x + dir * (0.08 + rng.rand() * 0.16);
+    const ey = Math.min(0.99, p.y + 0.12 + rng.rand() * 0.18);
+    const bp = fractalPath(p.x, p.y, ex, ey, 4, 0.45);
+    addBolt(bp, wBase * 0.45, wBase * 0.08, 0.5, 0.08);
+    if (rng.rand() > 0.6) {
+      const spi = 2 + Math.floor(rng.rand() * (bp.length - 4));
+      const sp = bp[spi];
+      const sp2 = fractalPath(sp.x, sp.y,
+        sp.x + dir * (0.06 + rng.rand() * 0.12),
+        Math.min(0.99, sp.y + 0.10 + rng.rand() * 0.12), 3, 0.45);
+      addBolt(sp2, wBase * 0.25, wBase * 0.05, 0.4, 0.06);
+    }
+  }
+
+  // 逐列分桶：每列只測試 y 範圍涵蓋該列的線段
+  const margin = wBase * 26;
+  const rowSegs = Array.from({ length: size }, () => []);
+  for (let si = 0; si < segs.length; si++) {
+    const sg = segs[si];
+    const y0 = Math.max(0, Math.floor((Math.min(sg.ay, sg.by) - margin) * size));
+    const y1 = Math.min(size - 1, Math.ceil((Math.max(sg.ay, sg.by) + margin) * size));
+    for (let j = y0; j <= y1; j++) rowSegs[j].push(si);
+  }
+
+  const endX = main[main.length - 1].x, endY = main[main.length - 1].y;
   const out = new Float32Array(size * size);
   for (let j = 0; j < size; j++) {
     const py = j / size;
+    const list = rowSegs[j];
     for (let i = 0; i < size; i++) {
       const px = i / size;
       let v = 0;
-      for (let s = 0; s < segs.length; s++) {
-        const sg = segs[s];
+      for (let s = 0; s < list.length; s++) {
+        const sg = segs[list[s]];
         const d = segDist(px, py, sg.ax, sg.ay, sg.bx, sg.by);
         if (d > sg.w * 24) continue;
-        v += sg.b * (Math.exp(-(d * d) / (sg.w * sg.w)) + Math.exp(-(d * d) / (sg.w * sg.w * 36)) * 0.22);
+        const q = d / sg.w;
+        // 三層輝光：白熱核心 / 中暈 / 寬柔暈
+        v += sg.b * (Math.exp(-q * q) + Math.exp(-q * q / 12) * 0.28 + Math.exp(-q * q / 120) * 0.08);
       }
+      // 末端衝擊光球
+      const edx = px - endX, edy = py - endY;
+      v += Math.exp(-(edx * edx + edy * edy) / 0.0009) * 0.55;
       out[j * size + i] = Math.min(1, v);
     }
   }
@@ -1210,8 +1269,15 @@ function generateMagicCircle(size, octaves, seed, freqScale) {
                   bx: cx + (rng.rand() - 0.5) * 0.034, by: cy + (rng.rand() - 0.5) * 0.034, w: 0.0020, b: 0.9 });
     }
   }
-  const ring = (r, r0, lw) => Math.exp(-((r - r0) * (r - r0)) / (lw * lw));
   const out = new Float32Array(size * size);
+  // 雙線環定義：[半徑, 線寬, 亮度]（主線 + 伴隨細線）
+  const rings = [
+    [r1,          0.0050, 1.00],   // 主外環
+    [r1 + 0.014,  0.0016, 0.70],   // 外伴細線
+    [r2,          0.0028, 0.90],
+    [r3,          0.0038, 0.90],   // 主內環
+    [r3 - 0.017,  0.0014, 0.65],   // 內伴細線
+  ];
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
     for (let i = 0; i < size; i++) {
@@ -1219,27 +1285,33 @@ function generateMagicCircle(size, octaves, seed, freqScale) {
       const idx = j * size + i;
       const r = Math.sqrt(dx * dx + dy * dy);
       const a = Math.atan2(dy, dx) + Math.PI;              // 0..2π
-      let v = ring(r, r1, 0.005);
-      v = Math.max(v, ring(r, r2, 0.0028) * 0.9);
-      v = Math.max(v, ring(r, r3, 0.0036) * 0.9);
+      let crisp = 0, glow = 0;
+      // 環（銳利線 + 下方寬柔光）
+      for (let k = 0; k < rings.length; k++) {
+        const d = r - rings[k][0], lw = rings[k][1], b = rings[k][2];
+        crisp = Math.max(crisp, b * Math.exp(-(d * d) / (lw * lw)));
+        glow += b * Math.exp(-(d * d) / (lw * lw * 60));
+      }
       // 虛線環
       const ph = (a / (Math.PI * 2) * 30) % 1;
       const dash = sstep(0.02, 0.10, ph) * (1 - sstep(0.50, 0.58, ph));
-      v = Math.max(v, ring(r, rDash, 0.0022) * 0.8 * dash);
+      crisp = Math.max(crisp, Math.exp(-((r - rDash) * (r - rDash)) / (0.0022 * 0.0022)) * 0.8 * dash);
       // 外環刻度
       const tph = (a / (Math.PI * 2) * ticks) % 1;
       const tick = Math.max(1 - sstep(0.04, 0.10, tph), sstep(0.90, 0.96, tph));
       const bandT = sstep(r2 - 0.004, r2, r) * (1 - sstep(r1, r1 + 0.004, r));
-      v = Math.max(v, tick * bandT * 0.95);
-      // 線段（六芒星 + 符文）
+      crisp = Math.max(crisp, tick * bandT * 0.95);
+      // 線段（六芒星 + 符文）：銳利線 + 柔光
+      const px = dx + 0.5, py = dy + 0.5;
       for (let s = 0; s < segs.length; s++) {
         const sg = segs[s];
-        const ddx = dx + 0.5 - sg.ax, ddy = dy + 0.5 - sg.ay;
-        if (ddx * ddx + ddy * ddy > 0.02 && segDist(dx + 0.5, dy + 0.5, sg.ax, sg.ay, sg.bx, sg.by) > 0.01) continue;
-        const d = segDist(dx + 0.5, dy + 0.5, sg.ax, sg.ay, sg.bx, sg.by);
-        v = Math.max(v, sg.b * Math.exp(-(d * d) / (sg.w * sg.w)));
+        const d = segDist(px, py, sg.ax, sg.ay, sg.bx, sg.by);
+        if (d > 0.05) continue;
+        if (d < 0.012) crisp = Math.max(crisp, sg.b * Math.exp(-(d * d) / (sg.w * sg.w)));
+        glow += sg.b * Math.exp(-(d * d) / 0.0006) * 0.35;
       }
-      out[idx] = Math.min(1, v * (1 - sstep(0.46 * RM + 0.02, 0.5, r)));
+      const v = Math.min(1, crisp + glow * 0.13);
+      out[idx] = v * (1 - sstep(0.46 * RM + 0.02, 0.5, r));
     }
   }
   return out;
