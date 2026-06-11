@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoiseGen — Seamless Texture Generator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1e1e2e;--panel:#2a2a3e;--accent:#7c7cff;
+  --text:#cdd6f4;--dim:#6c7086;
+  --green:#a6e3a1;--blue:#89b4fa;--red:#f38ba8;
+  --entry:#313244;--surface:#181825;
+}
+body{background:var(--bg);color:var(--text);font-family:Consolas,monospace;font-size:12px;min-height:100vh}
+.app{max-width:940px;margin:0 auto;padding:14px 16px}
+h1{color:var(--accent);font-size:13px;font-weight:bold;padding-bottom:12px;border-bottom:1px solid var(--panel);margin-bottom:12px}
+.main{display:flex;gap:14px;align-items:flex-start}
+.left{flex:0 0 270px;display:flex;flex-direction:column;gap:0}
+.right{flex:1;display:flex;flex-direction:column;gap:6px}
+/* Section labels */
+.lbl{color:var(--accent);font-weight:bold;font-size:10px;padding:9px 0 4px;letter-spacing:.04em}
+/* Type list */
+#type-list{list-style:none;background:var(--entry);border-radius:6px;max-height:220px;overflow-y:auto;border:1px solid var(--panel)}
+#type-list li{padding:5px 10px;cursor:pointer;font-size:11px;white-space:nowrap}
+#type-list li:hover{background:var(--panel)}
+#type-list li.sel{background:var(--accent);color:#1e1e2e}
+/* Radio rows */
+.radio-row{display:flex;gap:6px;flex-wrap:wrap;padding:2px 0}
+.radio-row label{display:flex;align-items:center;gap:3px;cursor:pointer;font-size:11px}
+input[type=radio]{accent-color:var(--accent)}
+/* Checkbox */
+.chk-row{display:flex;align-items:center;gap:6px;padding:3px 0}
+.chk-row label{cursor:pointer;font-size:11px}
+input[type=checkbox]{accent-color:var(--accent)}
+/* Sliders */
+.sl-row{display:flex;align-items:center;gap:8px;padding:2px 0}
+.sl-row .sl-lbl{color:var(--dim);font-size:10px;white-space:nowrap;min-width:36px}
+.sl-row .sl-val{color:var(--accent);font-weight:bold;font-size:11px;min-width:42px;text-align:right}
+input[type=range]{flex:1;accent-color:var(--accent);height:3px}
+/* Inputs */
+input[type=number]{background:var(--entry);color:var(--text);border:1px solid var(--panel);
+  border-radius:4px;padding:4px 6px;font-family:Consolas,monospace;font-size:11px;outline:none;width:72px}
+input[type=number]:focus{border-color:var(--accent)}
+.seed-row{display:flex;gap:6px;align-items:center}
+/* Buttons */
+.btn{border:none;border-radius:6px;padding:7px 16px;font-family:Consolas,monospace;
+  font-weight:bold;cursor:pointer;font-size:12px;transition:filter .1s}
+.btn:hover{filter:brightness(1.1)}
+.btn-save{background:var(--green);color:#1e1e2e}
+.btn-batch{background:var(--blue);color:#1e1e2e}
+.btn-rand{background:var(--panel);color:var(--text);font-size:10px;padding:4px 8px;border:1px solid var(--entry)}
+.btn-rand:hover{background:var(--entry)}
+/* Canvas — 桌面最大 360px，手機撐滿容器；aspect-ratio 維持正方形 */
+canvas{border-radius:4px;display:block;background:var(--surface);
+  width:min(100%,360px);aspect-ratio:1}
+.canvas-lbl{color:var(--dim);font-size:10px;padding:4px 0 2px;display:flex;align-items:center;gap:6px}
+/* Status */
+#status{color:var(--dim);font-size:10px;min-height:18px;padding:4px 0}
+#live-lbl{font-size:10px;color:var(--green)}
+/* Bottom bar */
+.bottom{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 4px;border-top:1px solid var(--panel);margin-top:8px}
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--panel)}
+::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
+/* Tile toggle btns */
+.tile-btn{background:var(--entry);color:var(--text);border:none;border-radius:4px;
+  padding:2px 7px;cursor:pointer;font-family:Consolas,monospace;font-size:10px}
+.tile-btn.active{background:var(--accent);color:#1e1e2e}
+/* Progress bar */
+#progress{height:3px;background:var(--accent);transition:width .2s;border-radius:2px;margin-top:2px}
+#progress-wrap{background:var(--panel);border-radius:2px;overflow:hidden;display:none}
+/* ── Responsive ─────────────────────────────────────────── */
+@media(max-width:640px){
+  .app{padding:10px 12px}
+  h1{font-size:12px;padding-bottom:8px;margin-bottom:8px}
+  /* 手機：直排，預覽區排在控制列上方 */
+  .main{flex-direction:column;gap:10px}
+  .left{flex:none;width:100%;order:2}
+  .right{flex:none;width:100%;order:1}
+  /* canvas 手機全寬（min(100%, 360px) 在窄螢幕本就是 100%，明確覆蓋以防萬一） */
+  canvas{width:100%}
+  /* 縮短噪波列表高度，減少手機滾動量 */
+  #type-list{max-height:150px}
+  /* 段落標籤間距縮小 */
+  .lbl{padding:6px 0 3px}
+  /* 下載按鈕在手機各佔一行 */
+  .bottom{gap:8px}
+  .btn-save,.btn-batch{flex:1 1 100%;text-align:center}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>NoiseGen — Seamless Turbulence Texture Generator</h1>
+  <div class="main">
+    <!-- ── Left panel ── -->
+    <div class="left">
+      <div class="lbl">── 噪波類型</div>
+      <ul id="type-list"></ul>
+
+      <div class="lbl">── 解析度</div>
+      <div class="radio-row" id="size-row"></div>
+
+      <div class="lbl">── 隨機種子</div>
+      <div class="seed-row">
+        <input type="number" id="seed" value="42" min="0" max="99999">
+        <button class="btn btn-rand" onclick="randomSeed()">🎲 隨機</button>
+      </div>
+
+      <div class="lbl">── 細節層數 (Octaves)</div>
+      <div class="sl-row">
+        <input type="range" id="octaves" min="4" max="12" value="8">
+        <span class="sl-val" id="octaves-val">8</span>
+      </div>
+
+      <div class="lbl">── 特徵縮放 (Scale)</div>
+      <div class="sl-row">
+        <input type="range" id="zoom" min="1" max="16" value="4">
+        <span class="sl-val" id="zoom-val">1.00×</span>
+      </div>
+
+      <div class="lbl">── 色彩映射</div>
+      <div class="radio-row" id="cmap-row"></div>
+
+      <div class="lbl">── 後處理</div>
+      <div class="chk-row"><input type="checkbox" id="invert"><label for="invert">反轉</label></div>
+      <div class="sl-row">
+        <span class="sl-lbl">Gamma</span>
+        <input type="range" id="gamma" min="2" max="30" value="10">
+        <span class="sl-val" id="gamma-val">1.0×</span>
+      </div>
+      <div class="sl-row">
+        <span class="sl-lbl">亮度</span>
+        <input type="range" id="bright" min="-10" max="10" value="0">
+        <span class="sl-val" id="bright-val">0.0</span>
+      </div>
+
+      <div class="lbl">── 批次設定</div>
+      <div class="sl-row">
+        <span class="sl-lbl">數量</span>
+        <input type="number" id="count" value="5" min="1" max="50" style="width:60px">
+      </div>
+      <div class="chk-row">
+        <input type="checkbox" id="all-types">
+        <label for="all-types">全部類型一起生成</label>
+      </div>
+    </div>
+
+    <!-- ── Right panel ── -->
+    <div class="right">
+      <div class="canvas-lbl">
+        <span id="live-lbl">⬤ 即時預覽</span>
+      </div>
+      <canvas id="preview" width="300" height="300"></canvas>
+
+      <!-- Tile section (hidden for flowmap) -->
+      <div id="tile-section">
+        <div class="canvas-lbl">
+          <span style="color:var(--dim)">拼貼預覽</span>
+          <span id="tile-btns"></span>
+        </div>
+        <canvas id="tile-canvas" width="300" height="300"></canvas>
+      </div>
+
+      <!-- Flow section (only for flowmap) -->
+      <div id="flow-section" style="display:none">
+        <div class="canvas-lbl">
+          <span style="color:var(--dim)">流動預覽</span>
+          <span style="color:#45475a;font-size:9px">粒子跟隨速度場移動</span>
+        </div>
+        <canvas id="flow-canvas" width="300" height="300"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Bottom bar ── -->
+  <div class="bottom">
+    <button class="btn btn-save" onclick="saveSingle()">💾  下載單張 PNG</button>
+    <button class="btn btn-batch" onclick="batchGenerate()">📦  批次下載 ZIP</button>
+    <div style="flex:1">
+      <div id="status">就緒</div>
+      <div id="progress-wrap"><div id="progress" style="width:0%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- JSZip for batch download -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
+
+<script>
+"use strict";
+
+// ============================================================
+// PRNG — xorshift32 (seeded, deterministic)
+// ============================================================
+class RNG {
+  constructor(seed) { this.s = (seed >>> 0) || 1; }
+  next() {
+    let s = this.s;
+    s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
+    this.s = s >>> 0;
+    return this.s / 4294967296;
+  }
+  rand() { return this.next(); }
+  randInt(lo, hi) { return lo + Math.floor(this.next() * (hi - lo + 1)); }
+}
+
+// ============================================================
+// Core — seamlessly-tiling value noise octave
+// ============================================================
+function valueNoiseOctave(size, freq, seed) {
+  const rng = new RNG(seed);
+  const fp1 = freq + 1;
+  const grid = new Float32Array(freq * freq);
+  for (let i = 0; i < grid.length; i++) grid[i] = rng.rand();
+
+  const gp = new Float32Array(fp1 * fp1);
+  for (let y = 0; y < freq; y++)
+    for (let x = 0; x < freq; x++)
+      gp[y * fp1 + x] = grid[y * freq + x];
+  for (let x = 0; x < freq; x++) gp[freq * fp1 + x] = grid[x];
+  for (let y = 0; y < freq; y++) gp[y * fp1 + freq] = grid[y * freq];
+  gp[freq * fp1 + freq] = grid[0];
+
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const gy = j * freq / size;
+    const y0 = Math.floor(gy) | 0;
+    let ty = gy - y0;
+    ty = ty * ty * ty * (ty * (ty * 6 - 15) + 10);
+    const iy0 = y0 * fp1, iy1 = (y0 + 1) * fp1;
+    for (let i = 0; i < size; i++) {
+      const gx = i * freq / size;
+      const x0 = Math.floor(gx) | 0;
+      let tx = gx - x0;
+      tx = tx * tx * tx * (tx * (tx * 6 - 15) + 10);
+      out[j * size + i] =
+        gp[iy0+x0]*(1-tx)*(1-ty) + gp[iy0+x0+1]*tx*(1-ty) +
+        gp[iy1+x0]*(1-tx)*ty     + gp[iy1+x0+1]*tx*ty;
+    }
+  }
+  return out;
+}
+
+// ============================================================
+// Core — FBM (fractional Brownian motion, value noise)
+// ============================================================
+function fbm(size, octaves=8, baseFreq=2, lacunarity=2.0, persistence=0.55, seed=0, freqScale=1.0) {
+  const rng = new RNG(seed);
+  const result = new Float32Array(size * size);
+  let amp = 1.0, total = 0.0;
+  let freq = Math.max(1, Math.round(baseFreq * freqScale));
+  for (let oct = 0; oct < octaves; oct++) {
+    if (freq > size) break;
+    const layer = valueNoiseOctave(size, freq, Math.floor(rng.rand() * 999999));
+    for (let i = 0; i < result.length; i++) result[i] += layer[i] * amp;
+    total += amp; amp *= persistence; freq = Math.floor(freq * lacunarity);
+  }
+  for (let i = 0; i < result.length; i++) result[i] /= total;
+  return result;
+}
+
+// ============================================================
+// Core — Perlin gradient noise octave (seamless)
+// ============================================================
+function gradientNoiseOctave(size, freq, seed) {
+  const rng = new RNG(seed);
+  const fp1 = freq + 1;
+  const angles = new Float32Array(freq * freq);
+  for (let i = 0; i < angles.length; i++) angles[i] = rng.rand() * 2 * Math.PI;
+
+  const gpx = new Float32Array(fp1 * fp1);
+  const gpy = new Float32Array(fp1 * fp1);
+  for (let y = 0; y < freq; y++) for (let x = 0; x < freq; x++) {
+    gpx[y*fp1+x] = Math.cos(angles[y*freq+x]);
+    gpy[y*fp1+x] = Math.sin(angles[y*freq+x]);
+  }
+  for (let x = 0; x < freq; x++) {
+    gpx[freq*fp1+x] = Math.cos(angles[x]);
+    gpy[freq*fp1+x] = Math.sin(angles[x]);
+  }
+  for (let y = 0; y < freq; y++) {
+    gpx[y*fp1+freq] = Math.cos(angles[y*freq]);
+    gpy[y*fp1+freq] = Math.sin(angles[y*freq]);
+  }
+  gpx[freq*fp1+freq] = Math.cos(angles[0]);
+  gpy[freq*fp1+freq] = Math.sin(angles[0]);
+
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const py = j * freq / size;
+    const y0 = Math.floor(py) | 0;
+    const fy = py - y0;
+    const v = fy * fy * fy * (fy * (fy * 6 - 15) + 10);
+    const iy0 = y0 * fp1, iy1 = (y0+1) * fp1;
+    for (let i = 0; i < size; i++) {
+      const px = i * freq / size;
+      const x0 = Math.floor(px) | 0;
+      const fx = px - x0;
+      const u = fx * fx * fx * (fx * (fx * 6 - 15) + 10);
+      const n00 = gpx[iy0+x0]*fx       + gpy[iy0+x0]*fy;
+      const n10 = gpx[iy0+x0+1]*(fx-1) + gpy[iy0+x0+1]*fy;
+      const n01 = gpx[iy1+x0]*fx       + gpy[iy1+x0]*(fy-1);
+      const n11 = gpx[iy1+x0+1]*(fx-1) + gpy[iy1+x0+1]*(fy-1);
+      const raw = n00*(1-u)*(1-v) + n10*u*(1-v) + n01*(1-u)*v + n11*u*v;
+      out[j*size+i] = Math.max(0, Math.min(1, raw / 0.707 * 0.5 + 0.5));
+    }
+  }
+  return out;
+}
+
+function gradientFbm(size, octaves=8, baseFreq=2, lacunarity=2.0, persistence=0.5, seed=0, freqScale=1.0) {
+  const rng = new RNG(seed);
+  const result = new Float32Array(size * size);
+  let amp = 1.0, total = 0.0;
+  let freq = Math.max(1, Math.round(baseFreq * freqScale));
+  for (let oct = 0; oct < octaves; oct++) {
+    if (freq > size) break;
+    const layer = gradientNoiseOctave(size, freq, Math.floor(rng.rand() * 999999));
+    for (let i = 0; i < result.length; i++) result[i] += layer[i] * amp;
+    total += amp; amp *= persistence; freq = Math.floor(freq * lacunarity);
+  }
+  for (let i = 0; i < result.length; i++) result[i] /= total;
+  return result;
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+function mapCoordsBilinear(arr, H, W, coordsY, coordsX) {
+  const N = coordsY.length, out = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const py = ((coordsY[i] % H) + H) % H;
+    const px = ((coordsX[i] % W) + W) % W;
+    const y0 = Math.floor(py) | 0, x0 = Math.floor(px) | 0;
+    const y1 = (y0+1) % H, x1 = (x0+1) % W;
+    const fy = py - Math.floor(py), fx = px - Math.floor(px);
+    out[i] = arr[y0*W+x0]*(1-fy)*(1-fx) + arr[y0*W+x1]*(1-fy)*fx +
+             arr[y1*W+x0]*fy*(1-fx)      + arr[y1*W+x1]*fy*fx;
+  }
+  return out;
+}
+
+// np.roll(arr, shift, axis=0) → result[y] = arr[(y - shift + H) % H]
+function rollRows(arr, H, W, shift) {
+  const out = new Float32Array(H * W);
+  for (let y = 0; y < H; y++) {
+    const sy = ((y - shift) % H + H) % H;
+    for (let x = 0; x < W; x++) out[y*W+x] = arr[sy*W+x];
+  }
+  return out;
+}
+
+// np.roll(arr, shift, axis=1) → result[y,x] = arr[y, (x - shift + W) % W]
+function rollCols(arr, H, W, shift) {
+  const out = new Float32Array(H * W);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      out[y*W+x] = arr[y*W + ((x - shift + W) % W)];
+  return out;
+}
+
+function normalize(arr) {
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < arr.length; i++) { if (arr[i] < lo) lo = arr[i]; if (arr[i] > hi) hi = arr[i]; }
+  const r = hi - lo + 1e-8, out = new Float32Array(arr.length);
+  for (let i = 0; i < arr.length; i++) out[i] = (arr[i] - lo) / r;
+  return out;
+}
+
+function clamp01(arr) {
+  const out = new Float32Array(arr.length);
+  for (let i = 0; i < arr.length; i++) out[i] = Math.max(0, Math.min(1, arr[i]));
+  return out;
+}
+
+// ============================================================
+// Generators
+// ============================================================
+function generateCloud(size, octaves, seed, freqScale) {
+  const n = fbm(size, octaves, 2, 2.0, 0.55, seed, freqScale);
+  for (let i = 0; i < n.length; i++) n[i] = Math.max(0, Math.min(1, (n[i]-0.5)*1.3+0.5));
+  return n;
+}
+
+function generateTurbulence(size, octaves, seed, freqScale) {
+  const n = fbm(size, octaves, 3, 2.2, 0.5, seed, freqScale);
+  for (let i = 0; i < n.length; i++) {
+    let v = 1 - Math.abs(n[i]*2-1);
+    n[i] = Math.pow(Math.max(0, v), 1.8);
+  }
+  return normalize(n);
+}
+
+function generateWarp(size, octaves, seed, freqScale) {
+  const base = fbm(size, octaves, 2, 2.0, 0.55, seed, freqScale);
+  const wx1  = fbm(size, 4, 2, 2.0, 0.5, seed+1001);
+  const wy1  = fbm(size, 4, 2, 2.0, 0.5, seed+2001);
+  const N = size * size;
+  const cx = new Float32Array(N), cy = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j*size+i;
+    cx[idx] = (((i/size) + (wx1[idx]-0.5)*0.45) % 1 + 1) % 1 * size;
+    cy[idx] = (((j/size) + (wy1[idx]-0.5)*0.45) % 1 + 1) % 1 * size;
+  }
+  const wfx = fbm(size, 4, 2, 2.0, 0.5, seed+3001);
+  const wfy = fbm(size, 4, 2, 2.0, 0.5, seed+4001);
+  const wx2 = mapCoordsBilinear(wfx, size, size, cy, cx);
+  const wy2 = mapCoordsBilinear(wfy, size, size, cy, cx);
+  const cx2 = new Float32Array(N), cy2 = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j*size+i;
+    cx2[idx] = ((cx[idx]/size + (wx2[idx]-0.5)*0.225) % 1 + 1) % 1 * size;
+    cy2[idx] = ((cy[idx]/size + (wy2[idx]-0.5)*0.225) % 1 + 1) % 1 * size;
+  }
+  return normalize(mapCoordsBilinear(base, size, size, cy2, cx2));
+}
+
+function generateMarble(size, octaves, seed, freqScale) {
+  const n = fbm(size, octaves, 3, 2.2, 0.5, seed, freqScale);
+  for (let i = 0; i < n.length; i++) {
+    let v = Math.sin((n[i]*8+0.5)*Math.PI)*0.5+0.5;
+    n[i] = Math.pow(v, 1.4);
+  }
+  return normalize(n);
+}
+
+function generateEnergy(size, octaves, seed, freqScale) {
+  const n = fbm(size, octaves, 2, 2.0, 0.62, seed, freqScale);
+  const det = fbm(size, 5, 8, 2.0, 0.4, seed+500);
+  for (let i = 0; i < n.length; i++) {
+    let v = 1 - Math.abs(n[i]*2-1);
+    v = Math.pow(Math.max(0, v), 4);
+    let d = 1 - Math.abs(det[i]*2-1);
+    d = Math.pow(Math.max(0, d), 6);
+    v = Math.min(1, v + d*0.30);
+    n[i] = Math.max(v-0.40, 0) / 0.60;
+  }
+  return n;
+}
+
+function generateVoronoi(size, octaves, seed, freqScale) {
+  const C = Math.max(2, Math.round(Math.max(4, octaves*3)*freqScale));
+  const rng = new RNG(seed);
+  const pts = new Float32Array(C*2);
+  for (let i = 0; i < C*2; i++) pts[i] = rng.rand();
+
+  const f1 = new Float32Array(size*size).fill(Infinity);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (let c = 0; c < C; c++) {
+    const pcx = pts[c*2]+dx, pcy = pts[c*2+1]+dy;
+    for (let j = 0; j < size; j++) {
+      const dyy = j/size - pcy;
+      for (let i = 0; i < size; i++) {
+        const dxx = i/size - pcx;
+        const d = Math.sqrt(dxx*dxx+dyy*dyy);
+        const idx = j*size+i;
+        if (d < f1[idx]) f1[idx] = d;
+      }
+    }
+  }
+  let mx = 0; for (let i = 0; i < f1.length; i++) if (f1[i] > mx) mx = f1[i];
+  mx += 1e-8;
+  for (let i = 0; i < f1.length; i++) f1[i] = 1 - f1[i]/mx;
+  return f1;
+}
+
+function generateCrackle(size, octaves, seed, freqScale) {
+  const C = Math.max(2, Math.round(Math.max(4, octaves*2)*freqScale));
+  const rng = new RNG(seed);
+  const pts = new Float32Array(C*2);
+  for (let i = 0; i < C*2; i++) pts[i] = rng.rand();
+
+  const f1 = new Float32Array(size*size).fill(Infinity);
+  const f2 = new Float32Array(size*size).fill(Infinity);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (let c = 0; c < C; c++) {
+    const pcx = pts[c*2]+dx, pcy = pts[c*2+1]+dy;
+    for (let j = 0; j < size; j++) {
+      const dyy = j/size - pcy;
+      for (let i = 0; i < size; i++) {
+        const dxx = i/size - pcx;
+        const d = Math.sqrt(dxx*dxx+dyy*dyy);
+        const idx = j*size+i;
+        if (d < f1[idx]) { f2[idx] = f1[idx]; f1[idx] = d; }
+        else if (d < f2[idx]) f2[idx] = d;
+      }
+    }
+  }
+  const out = new Float32Array(size*size);
+  let mx = 0;
+  for (let i = 0; i < out.length; i++) { out[i] = f2[i]-f1[i]; if (out[i] > mx) mx = out[i]; }
+  mx += 1e-8;
+  for (let i = 0; i < out.length; i++) out[i] = Math.pow(out[i]/mx, 0.6);
+  return out;
+}
+
+function generateRidged(size, octaves, seed, freqScale) {
+  const rng = new RNG(seed);
+  const result = new Float32Array(size*size);
+  const weight = new Float32Array(size*size).fill(1);
+  let freq = Math.max(1, Math.round(2*freqScale)), amp = 0.5;
+  for (let oct = 0; oct < octaves; oct++) {
+    if (freq > size) break;
+    const layer = valueNoiseOctave(size, freq, Math.floor(rng.rand()*999999));
+    for (let i = 0; i < result.length; i++) {
+      let sig = 1 - Math.abs(layer[i]*2-1); sig *= sig; sig *= weight[i];
+      result[i] += sig * amp; weight[i] = Math.max(0, Math.min(1, sig));
+    }
+    amp *= 0.5; freq = Math.floor(freq * 2);
+  }
+  return normalize(result);
+}
+
+function generateBillow(size, octaves, seed, freqScale) {
+  const n = fbm(size, octaves, 2, 2.0, 0.55, seed, freqScale);
+  for (let i = 0; i < n.length; i++) {
+    let v = 1 - Math.abs(n[i]*2-1);
+    n[i] = Math.pow(Math.max(0, v), 1.2);
+  }
+  return normalize(n);
+}
+
+function generateWispy(size, octaves, seed, freqScale) {
+  const n = fbm(size, octaves, 4, 2.2, 0.45, seed, freqScale);
+  for (let i = 0; i < n.length; i++) n[i] = Math.pow(Math.max(0, 1-Math.abs(n[i]*2-1)), 3);
+  const wx = fbm(size, 4, 2, 2.0, 0.55, seed+1000);
+  const wy = fbm(size, 3, 2, 2.0, 0.55, seed+2000);
+  const N = size*size;
+  const cx = new Float32Array(N), cy = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j*size+i;
+    cx[idx] = (((i/size)+(wx[idx]-0.5)*0.7)%1+1)%1*size;
+    cy[idx] = (((j/size)+(wy[idx]-0.5)*0.15)%1+1)%1*size;
+  }
+  const result = mapCoordsBilinear(n, size, size, cy, cx);
+  let mx = 0; for (let i = 0; i < result.length; i++) if (result[i] > mx) mx = result[i];
+  if (mx > 0) for (let i = 0; i < result.length; i++) result[i] /= mx;
+  return clamp01(result);
+}
+
+function generateCurl(size, octaves, seed, freqScale) {
+  const phi  = fbm(size, octaves, 2, 2.0, 0.5, seed, freqScale);
+  const base = fbm(size, octaves, 2, 2.0, 0.55, seed+500, freqScale);
+  const rm1  = rollRows(phi, size, size, -1); // phi[y+1]
+  const rp1  = rollRows(phi, size, size,  1); // phi[y-1]
+  const cm1  = rollCols(phi, size, size, -1); // phi[x+1]
+  const cp1  = rollCols(phi, size, size,  1); // phi[x-1]
+  const N = size*size;
+  const cx = new Float32Array(N), cy = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j*size+i;
+    const curlX = (rm1[idx]-rp1[idx])*0.5;
+    const curlY = -(cm1[idx]-cp1[idx])*0.5;
+    cx[idx] = (((i/size)+curlX*2.5)%1+1)%1*size;
+    cy[idx] = (((j/size)+curlY*2.5)%1+1)%1*size;
+  }
+  return normalize(mapCoordsBilinear(base, size, size, cy, cx));
+}
+
+function generatePerlin(size, octaves, seed, freqScale) {
+  const n = gradientFbm(size, octaves, 2, 2.0, 0.5, seed, freqScale);
+  for (let i = 0; i < n.length; i++) n[i] = Math.max(0, Math.min(1, (n[i]-0.5)*1.3+0.5));
+  return n;
+}
+
+function generateVoronoise(size, octaves, seed, freqScale) {
+  const C = Math.max(3, Math.round(Math.max(5, octaves*2)*freqScale));
+  const rng = new RNG(seed);
+  const pts = new Float32Array(C*2), vals = new Float32Array(C);
+  for (let i = 0; i < C*2; i++) pts[i] = rng.rand();
+  for (let i = 0; i < C; i++) vals[i] = rng.rand();
+  const k = 6.0 * C;
+  const sumW = new Float32Array(size*size), sumWV = new Float32Array(size*size);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) for (let c = 0; c < C; c++) {
+    const pcx = pts[c*2]+dx, pcy = pts[c*2+1]+dy, v = vals[c];
+    for (let j = 0; j < size; j++) {
+      const dyy = j/size - pcy;
+      for (let i = 0; i < size; i++) {
+        const dxx = i/size - pcx;
+        const w = Math.exp(-k*(dxx*dxx+dyy*dyy));
+        const idx = j*size+i; sumW[idx] += w; sumWV[idx] += w*v;
+      }
+    }
+  }
+  const out = new Float32Array(size*size);
+  for (let i = 0; i < out.length; i++) out[i] = sumW[i] > 1e-8 ? sumWV[i]/sumW[i] : 0;
+  return normalize(out);
+}
+
+function generateHetero(size, octaves, seed, freqScale) {
+  const rng = new RNG(seed), offset = 0.7;
+  let freq = Math.max(1, Math.round(2*freqScale));
+  const first = valueNoiseOctave(size, freq, Math.floor(rng.rand()*999999));
+  const result = new Float32Array(size*size);
+  for (let i = 0; i < result.length; i++) result[i] = first[i]+offset;
+  let amp = 0.5; freq = Math.floor(freq*2);
+  for (let oct = 1; oct < octaves; oct++) {
+    if (freq > size) break;
+    const layer = valueNoiseOctave(size, freq, Math.floor(rng.rand()*999999));
+    for (let i = 0; i < result.length; i++) result[i] += amp*(layer[i]+offset)*result[i];
+    amp *= 0.45; freq = Math.floor(freq*2);
+  }
+  return normalize(result);
+}
+
+function generateDistort(size, octaves, seed, freqScale) {
+  const rng = new RNG(seed);
+  const result = new Float32Array(size*size);
+  const shX = new Float32Array(size*size), shY = new Float32Array(size*size);
+  let amp = 1.0, total = 0.0, freq = Math.max(1, Math.round(2*freqScale));
+  for (let oct = 0; oct < octaves; oct++) {
+    if (freq > size) break;
+    const base = valueNoiseOctave(size, freq, Math.floor(rng.rand()*999999));
+    const N = size*size;
+    const px = new Float32Array(N), py = new Float32Array(N);
+    for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+      const idx = j*size+i;
+      px[idx] = (((i/size)+shX[idx])%1+1)%1*size;
+      py[idx] = (((j/size)+shY[idx])%1+1)%1*size;
+    }
+    const layer = mapCoordsBilinear(base, size, size, py, px);
+    const decay = 0.30/(oct+1);
+    for (let i = 0; i < N; i++) {
+      result[i] += layer[i]*amp;
+      shX[i] += (layer[i]-0.5)*decay;
+      shY[i] += (layer[i]-0.5)*decay*0.65;
+    }
+    total += amp; amp *= 0.5; freq = Math.floor(freq*2);
+  }
+  for (let i = 0; i < result.length; i++) result[i] /= total;
+  return normalize(result);
+}
+
+// ============================================================
+// Flow Map
+// ============================================================
+function generateFlowmapField(size, octaves, seed, freqScale) {
+  const phi = fbm(size, octaves, 2, 2.0, 0.5, seed, freqScale);
+  const rm1 = rollRows(phi, size, size, -1), rp1 = rollRows(phi, size, size, 1);
+  const cm1 = rollCols(phi, size, size, -1), cp1 = rollCols(phi, size, size, 1);
+  const cx = new Float32Array(size*size), cy = new Float32Array(size*size);
+  for (let i = 0; i < size*size; i++) {
+    cx[i] = (rm1[i]-rp1[i])*0.5;
+    cy[i] = -(cm1[i]-cp1[i])*0.5;
+  }
+  let mx = 1e-8;
+  for (let i = 0; i < size*size; i++) { const m = Math.sqrt(cx[i]*cx[i]+cy[i]*cy[i]); if (m > mx) mx = m; }
+  for (let i = 0; i < size*size; i++) { cx[i] /= mx; cy[i] /= mx; }
+  return { cx, cy };
+}
+
+function flowmapToRgba(cx, cy) {
+  const N = cx.length, out = new Uint8ClampedArray(N*4);
+  for (let i = 0; i < N; i++) {
+    out[i*4+0] = Math.round((cx[i]*0.5+0.5)*255);
+    out[i*4+1] = Math.round((cy[i]*0.5+0.5)*255);
+    out[i*4+2] = 128; out[i*4+3] = 255;
+  }
+  return out;
+}
+
+function generateFlowmapGray(size, octaves, seed, freqScale) {
+  const { cx, cy } = generateFlowmapField(size, octaves, seed, freqScale);
+  const out = new Float32Array(size*size);
+  for (let i = 0; i < size*size; i++) out[i] = Math.sqrt(cx[i]*cx[i]+cy[i]*cy[i]);
+  return out;
+}
+
+// ============================================================
+// Generator map
+// ============================================================
+const GENERATORS = {
+  cloud:     generateCloud,
+  turbulence:generateTurbulence,
+  warp:      generateWarp,
+  marble:    generateMarble,
+  energy:    generateEnergy,
+  voronoi:   generateVoronoi,
+  crackle:   generateCrackle,
+  ridged:    generateRidged,
+  billow:    generateBillow,
+  wispy:     generateWispy,
+  curl:      generateCurl,
+  perlin:    generatePerlin,
+  voronoise: generateVoronoise,
+  hetero:    generateHetero,
+  distort:   generateDistort,
+  flowmap:   generateFlowmapGray,
+};
+
+// ============================================================
+// Color maps + post-processing
+// ============================================================
+function applyColormap(arr, colormap) {
+  const N = arr.length, out = new Uint8ClampedArray(N*4);
+  if (colormap === 'gold') {
+    for (let i = 0; i < N; i++) {
+      const g = arr[i];
+      out[i*4]   = Math.round(Math.pow(Math.max(0,Math.min(1,g)),     0.55)*255);
+      out[i*4+1] = Math.round(Math.pow(Math.max(0,Math.min(1,g*0.78)),0.75)*255);
+      out[i*4+2] = Math.round(Math.pow(Math.max(0,Math.min(1,g*0.18)),1.50)*255);
+      out[i*4+3] = 255;
+    }
+  } else if (colormap === 'plasma') {
+    for (let i = 0; i < N; i++) {
+      const g = arr[i];
+      out[i*4]   = Math.round(Math.pow(Math.max(0,Math.min(1,g*1.20)),0.80)*255);
+      out[i*4+1] = Math.round(Math.pow(Math.max(0,Math.min(1,g*0.40)),1.50)*255);
+      out[i*4+2] = Math.round(Math.pow(Math.max(0,Math.min(1,g*1.50)),0.60)*255);
+      out[i*4+3] = 255;
+    }
+  } else {
+    for (let i = 0; i < N; i++) {
+      const v = Math.round(arr[i]*255);
+      out[i*4]=v; out[i*4+1]=v; out[i*4+2]=v; out[i*4+3]=255;
+    }
+  }
+  return out;
+}
+
+function postprocess(arr, gamma=1.0, invert=false, brightness=0.0) {
+  const out = new Float32Array(arr.length);
+  for (let i = 0; i < arr.length; i++) {
+    let v = arr[i];
+    if (brightness !== 0) v = Math.max(0, Math.min(1, v+brightness));
+    if (gamma !== 1) v = Math.pow(Math.max(0, v), gamma);
+    if (invert) v = 1-v;
+    out[i] = v;
+  }
+  return out;
+}
+
+// ============================================================
+// Canvas rendering
+// ============================================================
+const PREVIEW_SIZE = 300;
+const PREVIEW_CALC = 128;
+
+function arrToImageData(ctx, arr, size, colormap) {
+  const id = ctx.createImageData(size, size);
+  id.data.set(applyColormap(arr, colormap));
+  return id;
+}
+
+function renderToCanvas(canvas, arr, size, colormap) {
+  const ctx = canvas.getContext('2d');
+  const tmp = document.createElement('canvas');
+  tmp.width = size; tmp.height = size;
+  tmp.getContext('2d').putImageData(arrToImageData(tmp.getContext('2d'), arr, size, colormap), 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+}
+
+function renderTiledCanvas(canvas, arr, size, tiles, colormap) {
+  const ctx = canvas.getContext('2d');
+  const tmp = document.createElement('canvas');
+  tmp.width = size; tmp.height = size;
+  tmp.getContext('2d').putImageData(arrToImageData(tmp.getContext('2d'), arr, size, colormap), 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingQuality = 'high';
+  const cell = canvas.width / tiles;
+  for (let ty = 0; ty < tiles; ty++)
+    for (let tx = 0; tx < tiles; tx++)
+      ctx.drawImage(tmp, tx*cell, ty*cell, cell, cell);
+}
+
+function renderRgbaToCanvas(canvas, rgba, size) {
+  const ctx = canvas.getContext('2d');
+  const tmp = document.createElement('canvas');
+  tmp.width = size; tmp.height = size;
+  const id = tmp.getContext('2d').createImageData(size, size);
+  id.data.set(rgba);
+  tmp.getContext('2d').putImageData(id, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+}
+
+// ============================================================
+// Flow Map particle animation
+// ============================================================
+const N_PARTICLES = 600;
+let _flowTimer = null;
+
+function stopFlowAnim() {
+  if (_flowTimer) { clearInterval(_flowTimer); _flowTimer = null; }
+}
+
+function startFlowAnim(cx, cy, fieldSize) {
+  stopFlowAnim();
+  const canvas = document.getElementById('flow-canvas');
+  const S = canvas.width;
+  const ctx = canvas.getContext('2d');
+  const LIFETIME = 100, dt = 0.006;
+  const px = new Float32Array(N_PARTICLES), py = new Float32Array(N_PARTICLES);
+  const ages = new Float32Array(N_PARTICLES);
+  for (let i = 0; i < N_PARTICLES; i++) { px[i] = Math.random(); py[i] = Math.random(); ages[i] = Math.random()*80; }
+  let buf = new Float32Array(S*S*3);
+  for (let i = 0; i < S*S; i++) { buf[i*3]=30; buf[i*3+1]=30; buf[i*3+2]=46; }
+
+  _flowTimer = setInterval(() => {
+    // sample + move
+    for (let i = 0; i < N_PARTICLES; i++) {
+      const ix = Math.floor(px[i]*fieldSize) % fieldSize;
+      const iy = Math.floor(py[i]*fieldSize) % fieldSize;
+      const vx = cx[iy*fieldSize+ix], vy = cy[iy*fieldSize+ix];
+      px[i] = ((px[i]+vx*dt)%1+1)%1;
+      py[i] = ((py[i]+vy*dt)%1+1)%1;
+      ages[i]++;
+      if (ages[i] > LIFETIME) { px[i]=Math.random(); py[i]=Math.random(); ages[i]=0; }
+    }
+    // fade buffer
+    for (let i = 0; i < S*S; i++) {
+      buf[i*3]   = buf[i*3]*0.88   + 30*0.12;
+      buf[i*3+1] = buf[i*3+1]*0.88 + 30*0.12;
+      buf[i*3+2] = buf[i*3+2]*0.88 + 46*0.12;
+    }
+    // paint particles
+    for (let i = 0; i < N_PARTICLES; i++) {
+      const alpha = Math.min(ages[i]/18, 1);
+      if (alpha < 0.08) continue;
+      const ix = Math.floor(px[i]*fieldSize) % fieldSize;
+      const iy = Math.floor(py[i]*fieldSize) % fieldSize;
+      const vx = cx[iy*fieldSize+ix], vy = cy[iy*fieldSize+ix];
+      const sx = Math.floor(px[i]*S) % S, sy = Math.floor(py[i]*S) % S;
+      const k = (sy*S+sx)*3;
+      const r=(vx*0.5+0.5)*255*alpha, g=(vy*0.5+0.5)*255*alpha, b=alpha*210;
+      if (r>buf[k])   buf[k]=r;
+      if (g>buf[k+1]) buf[k+1]=g;
+      if (b>buf[k+2]) buf[k+2]=b;
+    }
+    // write to canvas
+    const id = ctx.createImageData(S, S);
+    for (let i = 0; i < S*S; i++) {
+      id.data[i*4]   = buf[i*3];
+      id.data[i*4+1] = buf[i*3+1];
+      id.data[i*4+2] = buf[i*3+2];
+      id.data[i*4+3] = 255;
+    }
+    ctx.putImageData(id, 0, 0);
+  }, 33);
+}
+
+// ============================================================
+// UI state
+// ============================================================
+const TYPE_LABELS = [
+  ['cloud',     '☁  Cloud       柔軟雲霧'],
+  ['turbulence','⚡ Turbulence  高對比紋路'],
+  ['warp',      '🌊 Warp        方向性流動'],
+  ['marble',    '🪨 Marble      大理石條紋'],
+  ['energy',    '✨ Energy      能量光束'],
+  ['voronoi',   '🫧 Voronoi     細胞泡泡'],
+  ['crackle',   '💥 Crackle     裂紋裂縫'],
+  ['ridged',    '🏔 Ridged      山脊紋路'],
+  ['billow',    '⛅ Billow      膨鬆雲朵'],
+  ['wispy',     '🌬 Wispy       絲狀縷絲'],
+  ['curl',      '🌀 Curl        渦旋捲曲'],
+  ['perlin',    '🎨 Perlin      梯度雜訊'],
+  ['voronoise', '💠 Voronoise   柔和細胞'],
+  ['hetero',    '🗻 Hetero      異質地形'],
+  ['distort',   '🌪 Distort     漸進扭曲'],
+  ['flowmap',   '💧 Flowmap     流動速度場'],
+];
+
+let currentType = 'cloud';
+let lastArr = null;          // last generated Float32Array (preview res)
+let lastFlowCx = null, lastFlowCy = null;
+let tileCount = 2;
+let debounceId = null;
+let isGenerating = false;
+
+function getParams() {
+  return {
+    type:      currentType,
+    size:      parseInt(document.querySelector('input[name=size]:checked')?.value || '512'),
+    seed:      parseInt(document.getElementById('seed').value) || 42,
+    octaves:   parseInt(document.getElementById('octaves').value),
+    freqScale: parseInt(document.getElementById('zoom').value) / 4,
+    colormap:  document.querySelector('input[name=cmap]:checked')?.value || 'gray',
+    gamma:     parseInt(document.getElementById('gamma').value) / 10,
+    invert:    document.getElementById('invert').checked,
+    brightness:parseInt(document.getElementById('bright').value) / 10,
+    count:     parseInt(document.getElementById('count').value) || 5,
+    allTypes:  document.getElementById('all-types').checked,
+  };
+}
+
+function setStatus(msg, color='var(--dim)') {
+  const el = document.getElementById('status');
+  el.textContent = msg; el.style.color = color;
+}
+function setLive(text, color='var(--green)') {
+  const el = document.getElementById('live-lbl');
+  el.textContent = text; el.style.color = color;
+}
+function setProgress(pct) {
+  const wrap = document.getElementById('progress-wrap');
+  const bar  = document.getElementById('progress');
+  if (pct <= 0 || pct >= 100) { wrap.style.display='none'; return; }
+  wrap.style.display='block'; bar.style.width = pct+'%';
+}
+
+function randomSeed() {
+  document.getElementById('seed').value = Math.floor(Math.random()*99999);
+  schedulePreview();
+}
+
+// ============================================================
+// UI Build
+// ============================================================
+function buildUI() {
+  // Type list
+  const ul = document.getElementById('type-list');
+  TYPE_LABELS.forEach(([key, label]) => {
+    const li = document.createElement('li');
+    li.textContent = label; li.dataset.key = key;
+    if (key === 'cloud') li.classList.add('sel');
+    li.addEventListener('click', () => selectType(key));
+    ul.appendChild(li);
+  });
+
+  // Size radios
+  const sr = document.getElementById('size-row');
+  ['64','128','256','512','1024'].forEach(s => {
+    const lbl = document.createElement('label');
+    const r = document.createElement('input');
+    r.type='radio'; r.name='size'; r.value=s;
+    if (s==='512') r.checked=true;
+    r.addEventListener('change', schedulePreview);
+    lbl.appendChild(r); lbl.append(' '+s);
+    sr.appendChild(lbl);
+  });
+
+  // Colormap radios
+  const cr = document.getElementById('cmap-row');
+  [['gray','灰階'],['gold','金色'],['plasma','Plasma']].forEach(([v, l]) => {
+    const lbl = document.createElement('label');
+    const r = document.createElement('input');
+    r.type='radio'; r.name='cmap'; r.value=v;
+    if (v==='gray') r.checked=true;
+    r.addEventListener('change', schedulePreview);
+    lbl.appendChild(r); lbl.append(' '+l);
+    cr.appendChild(lbl);
+  });
+
+  // Tile buttons
+  const tb = document.getElementById('tile-btns');
+  [1,2,4].forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'tile-btn' + (t===2?' active':'');
+    btn.textContent = `${t}×${t}`;
+    btn.addEventListener('click', () => {
+      tileCount = t;
+      document.querySelectorAll('.tile-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (lastArr) renderTilePreview();
+    });
+    tb.appendChild(btn);
+  });
+
+  // Slider listeners
+  document.getElementById('octaves').addEventListener('input', e => {
+    document.getElementById('octaves-val').textContent = e.target.value;
+    schedulePreview();
+  });
+  document.getElementById('zoom').addEventListener('input', e => {
+    document.getElementById('zoom-val').textContent = (e.target.value/4).toFixed(2)+'×';
+    schedulePreview();
+  });
+  document.getElementById('gamma').addEventListener('input', e => {
+    document.getElementById('gamma-val').textContent = (e.target.value/10).toFixed(1)+'×';
+    if (lastArr) renderTilePreview();
+  });
+  document.getElementById('bright').addEventListener('input', e => {
+    const v = parseInt(e.target.value);
+    document.getElementById('bright-val').textContent = v===0?'0.0':(v>0?'+':'')+(v/10).toFixed(1);
+    if (lastArr) renderTilePreview();
+  });
+  document.getElementById('invert').addEventListener('change', () => { if (lastArr) renderTilePreview(); });
+  document.getElementById('seed').addEventListener('input', schedulePreview);
+}
+
+function selectType(key) {
+  currentType = key;
+  document.querySelectorAll('#type-list li').forEach(li => li.classList.toggle('sel', li.dataset.key===key));
+  const isFlow = key === 'flowmap';
+  document.getElementById('tile-section').style.display = isFlow ? 'none' : '';
+  document.getElementById('flow-section').style.display = isFlow ? '' : 'none';
+  if (!isFlow) stopFlowAnim();
+  schedulePreview();
+}
+
+// ============================================================
+// Preview
+// ============================================================
+function schedulePreview() {
+  if (debounceId) clearTimeout(debounceId);
+  setLive('⬤ 即時預覽  ●', 'var(--dim)');
+  debounceId = setTimeout(runPreview, 0);
+}
+
+function runPreview() {
+  debounceId = null;
+  const p = getParams();
+  setLive('⬤ 生成中…', 'var(--accent)');
+  setStatus('預覽生成中…', 'var(--accent)');
+  setTimeout(() => {
+    try {
+      if (p.type === 'flowmap') {
+        const { cx, cy } = generateFlowmapField(PREVIEW_CALC, p.octaves, p.seed, p.freqScale);
+        lastFlowCx = cx; lastFlowCy = cy; lastArr = null;
+        renderRgbaToCanvas(document.getElementById('preview'), flowmapToRgba(cx, cy), PREVIEW_CALC);
+        startFlowAnim(cx, cy, PREVIEW_CALC);
+      } else {
+        lastArr = GENERATORS[p.type](PREVIEW_CALC, p.octaves, p.seed, p.freqScale);
+        renderTilePreview();
+      }
+      setLive('⬤ 即時預覽', 'var(--green)');
+      setStatus(`${p.type}  ${p.size}×${p.size}  seed=${p.seed}  oct=${p.octaves}  ×${p.freqScale.toFixed(2)}`, 'var(--green)');
+    } catch(e) {
+      setLive('⬤ 錯誤', 'var(--red)');
+      setStatus(`⚠ ${e.message}`, 'var(--red)');
+    }
+  }, 0);
+}
+
+function renderTilePreview() {
+  if (!lastArr) return;
+  const p = getParams();
+  const out = postprocess(lastArr, p.gamma, p.invert, p.brightness);
+  renderToCanvas(document.getElementById('preview'), out, PREVIEW_CALC, p.colormap);
+  renderTiledCanvas(document.getElementById('tile-canvas'), out, PREVIEW_CALC, tileCount, p.colormap);
+}
+
+// ============================================================
+// Export helpers
+// ============================================================
+function arrToExportCanvas(arr, size, colormap) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const id = ctx.createImageData(size, size);
+  id.data.set(applyColormap(arr, colormap));
+  ctx.putImageData(id, 0, 0);
+  return canvas;
+}
+
+function rgbaToExportCanvas(rgba, size) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const id = ctx.createImageData(size, size);
+  id.data.set(rgba); ctx.putImageData(id, 0, 0);
+  return canvas;
+}
+
+function canvasToBlob(canvas) {
+  return new Promise(res => canvas.toBlob(res, 'image/png'));
+}
+
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ============================================================
+// Save single
+// ============================================================
+function saveSingle() {
+  if (isGenerating) return;
+  const p = getParams();
+  isGenerating = true;
+  setStatus('生成中（完整解析度）…', 'var(--blue)');
+
+  setTimeout(async () => {
+    try {
+      const name = `${p.type}_${p.size}_${String(p.seed).padStart(4,'0')}.png`;
+      let canvas;
+      if (p.type === 'flowmap') {
+        const { cx, cy } = generateFlowmapField(p.size, p.octaves, p.seed, p.freqScale);
+        canvas = rgbaToExportCanvas(flowmapToRgba(cx, cy), p.size);
+      } else {
+        const arr = GENERATORS[p.type](p.size, p.octaves, p.seed, p.freqScale);
+        const out = postprocess(arr, p.gamma, p.invert, p.brightness);
+        canvas = arrToExportCanvas(out, p.size, p.colormap);
+      }
+      const blob = await canvasToBlob(canvas);
+      downloadBlob(blob, name);
+      setStatus(`✅ 已下載  ${name}`, 'var(--green)');
+    } catch(e) {
+      setStatus(`⚠ ${e.message}`, 'var(--red)');
+    }
+    isGenerating = false;
+  }, 0);
+}
+
+// ============================================================
+// Batch generate → ZIP
+// ============================================================
+async function batchGenerate() {
+  if (isGenerating) return;
+  const p = getParams();
+  const types = p.allTypes ? Object.keys(GENERATORS) : [p.type];
+  const total = types.length * p.count;
+  let done = 0;
+  isGenerating = true;
+
+  const useJSZip = typeof JSZip !== 'undefined';
+  const zip = useJSZip ? new JSZip() : null;
+
+  setStatus(`批次生成中… 0/${total}`, 'var(--blue)');
+  setProgress(0);
+
+  for (const type of types) {
+    for (let i = 0; i < p.count; i++) {
+      const seed = p.seed + i;
+      const name = `${type}_${p.size}_${String(seed).padStart(4,'0')}.png`;
+      setStatus(`生成中… ${done+1}/${total}  ${name}`, 'var(--blue)');
+      setProgress(done / total * 100);
+
+      await new Promise(r => setTimeout(r, 0)); // yield to browser
+
+      try {
+        let canvas;
+        if (type === 'flowmap') {
+          const { cx, cy } = generateFlowmapField(p.size, p.octaves, seed, p.freqScale);
+          canvas = rgbaToExportCanvas(flowmapToRgba(cx, cy), p.size);
+        } else {
+          const arr = GENERATORS[type](p.size, p.octaves, seed, p.freqScale);
+          const cm = type === 'energy' ? 'gold' : p.colormap;
+          const out = postprocess(arr, p.gamma, p.invert, p.brightness);
+          canvas = arrToExportCanvas(out, p.size, cm);
+        }
+
+        if (zip) {
+          const blob = await canvasToBlob(canvas);
+          zip.file(name, blob);
+        } else {
+          const blob = await canvasToBlob(canvas);
+          downloadBlob(blob, name);
+        }
+      } catch(e) {
+        console.error(`Error ${name}:`, e);
+      }
+      done++;
+    }
+  }
+
+  setProgress(100);
+
+  if (zip) {
+    setStatus('壓縮中…', 'var(--blue)');
+    await new Promise(r => setTimeout(r, 0));
+    const blob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{level:6} },
+      meta => setProgress(meta.percent));
+    const zipName = `NoiseGen_batch_${p.size}_${total}textures.zip`;
+    downloadBlob(blob, zipName);
+    setStatus(`✅ 完成！${total} 張  →  ${zipName}`, 'var(--green)');
+  } else {
+    setStatus(`✅ 完成！共 ${total} 張（已逐一下載）`, 'var(--green)');
+  }
+
+  setProgress(0);
+  isGenerating = false;
+}
+
+// ============================================================
+// Init
+// ============================================================
+buildUI();
+schedulePreview();
+</script>
+</body>
+</html>
