@@ -28,6 +28,10 @@ h1::before{content:'';display:inline-block;width:3px;height:14px;background:var(
 .right{flex:1;min-width:0;min-height:0;display:flex;gap:10px;align-items:flex-start;overflow:hidden}
 #main-panel{flex:1;min-width:0;max-width:calc(100vh - 130px)}
 .thumbs{flex:0 0 clamp(140px, calc((100vh - 202px)/3), 230px);display:flex;flex-direction:column;gap:10px;max-height:100%;overflow-y:auto;padding-right:2px}
+/* 縮圖面板可收合（手機預設收合） */
+.thumbs .preview-col>.panel-header{cursor:pointer;user-select:none}
+.fold-arrow{color:var(--dim);font-size:9px;flex-shrink:0}
+.preview-col.collapsed canvas{display:none}
 .hdr-slider{width:60px;flex:none;accent-color:var(--accent);height:3px;min-width:0}
 /* Collapsible sections */
 details.section{border-bottom:1px solid var(--border)}
@@ -231,6 +235,7 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <!-- Tile section (hidden for flowmap) -->
         <div id="tile-section" class="preview-col">
           <div class="panel-header">
+            <span class="fold-arrow">▾</span>
             <span style="font-size:10px;font-weight:600;color:var(--dim)">拼貼</span>
             <span id="tile-btns" style="margin-left:auto"></span>
           </div>
@@ -240,6 +245,7 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <!-- Flow section (only for flowmap) -->
         <div id="flow-section" class="preview-col" style="display:none">
           <div class="panel-header">
+            <span class="fold-arrow">▾</span>
             <span style="font-size:10px;font-weight:600;color:var(--dim)">流動預覽</span>
             <span style="font-size:9px;color:var(--dim);opacity:.6;margin-left:auto">粒子速度場</span>
           </div>
@@ -249,6 +255,7 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <!-- Dissolve preview (hidden for flowmap) -->
         <div id="dissolve-section" class="preview-col">
           <div class="panel-header">
+            <span class="fold-arrow">▾</span>
             <span style="font-size:10px;font-weight:600;color:var(--dim)">溶解</span>
             <input type="range" id="dissolve-t" min="0" max="100" value="50" class="hdr-slider" style="margin-left:auto">
             <span id="dissolve-t-val" class="res-info" style="min-width:28px;text-align:right">50%</span>
@@ -259,6 +266,7 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <!-- UV scroll preview (hidden for flowmap) -->
         <div id="scroll-section" class="preview-col">
           <div class="panel-header">
+            <span class="fold-arrow">▾</span>
             <span style="font-size:10px;font-weight:600;color:var(--dim)">UV 滾動</span>
             <input type="range" id="scroll-speed" min="0" max="40" value="12" class="hdr-slider" style="margin-left:auto">
             <span id="scroll-speed-val" class="res-info" style="min-width:28px;text-align:right">1.2×</span>
@@ -2343,10 +2351,38 @@ document.getElementById('scroll-speed').addEventListener('input', e => {
   document.getElementById('scroll-speed-val').textContent = (e.target.value/10).toFixed(1)+'×';
 });
 
+// ============================================================
+// Thumb panel folding — 手機空間有限，預設只展開即時預覽
+// ============================================================
+function initThumbFolds() {
+  document.querySelectorAll('.thumbs .preview-col').forEach(col => {
+    const hdr = col.querySelector('.panel-header');
+    hdr.addEventListener('click', e => {
+      // 點到滑桿/按鈕時不觸發收合
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+      const collapsed = col.classList.toggle('collapsed');
+      const ar = hdr.querySelector('.fold-arrow');
+      if (ar) ar.textContent = collapsed ? '▸' : '▾';
+      if (!collapsed) {                                    // 展開時補上正確尺寸與內容
+        syncCanvasSizes();
+        if (lastArr) renderTilePreview();
+      }
+    });
+  });
+  if (window.innerWidth <= 640) {
+    document.querySelectorAll('.thumbs .preview-col').forEach(col => {
+      col.classList.add('collapsed');
+      const ar = col.querySelector('.fold-arrow');
+      if (ar) ar.textContent = '▸';
+    });
+  }
+}
+
 // Init
 // ============================================================
 buildUI();
 applyParamsFromURL();
+initThumbFolds();
 syncCanvasSizes();
 updateResInfo();
 schedulePreview();
