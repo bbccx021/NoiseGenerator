@@ -362,6 +362,17 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
           </div>
           <canvas id="flame-anim-canvas" width="300" height="300"></canvas>
         </div>
+
+        <!-- VoidRing outflow anim (only for voidring) -->
+        <div id="void-anim-section" class="preview-col" style="display:none">
+          <div class="panel-header">
+            <span class="fold-arrow">▾</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)">向外流動</span>
+            <input type="range" id="void-speed" min="0" max="40" value="15" class="hdr-slider" style="margin-left:auto">
+            <span id="void-speed-val" class="res-info" style="min-width:28px;text-align:right">1.5×</span>
+          </div>
+          <canvas id="void-anim-canvas" width="300" height="300"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -2333,8 +2344,10 @@ function selectType(key) {
   document.getElementById('scroll-section').style.display = isFlow ? 'none' : '';
   document.getElementById('flow-section').style.display = isFlow ? '' : 'none';
   document.getElementById('flame-anim-section').style.display = key === 'flame' ? '' : 'none';
+  document.getElementById('void-anim-section').style.display = key === 'voidring' ? '' : 'none';
   if (isFlow) stopScrollAnim(); else { stopFlowAnim(); startScrollAnim(); }
   if (key !== 'flame') stopFlameAnim();
+  if (key !== 'voidring') stopVoidAnim();
   applyPreviewTab();
   schedulePreview();
 }
@@ -2365,6 +2378,7 @@ function runPreview() {
         lastArr = applyLayers(GENERATORS[p.type](PREVIEW_CALC, p.octaves, p.seed, p.freqScale), PREVIEW_CALC, p);
         renderTilePreview();
         if (p.type === 'flame') { buildFlameCache(); startFlameAnim(); }
+        if (p.type === 'voidring') { buildVoidCache(); startVoidAnim(); }
       }
       setLive('⬤ 即時預覽', 'var(--green)');
       setStatus(`${p.type}  ${p.size}×${p.size}  seed=${p.seed}  oct=${p.octaves}  ×${p.freqScale.toFixed(2)}`, 'var(--green)');
@@ -2526,7 +2540,7 @@ async function batchGenerate() {
 // Sync canvas logical size to CSS display size (for correct pixel output)
 // ============================================================
 function syncCanvasSizes() {
-  ['preview','tile-canvas','flow-canvas','dissolve-canvas','scroll-canvas','flame-anim-canvas'].forEach(id => {
+  ['preview','tile-canvas','flow-canvas','dissolve-canvas','scroll-canvas','flame-anim-canvas','void-anim-canvas'].forEach(id => {
     const c = document.getElementById(id);
     const w = c.offsetWidth;
     if (w > 0 && (c.width !== w || c.height !== w)) {
@@ -2693,6 +2707,93 @@ function stopFlameAnim() {
 }
 
 // ============================================================
+// VoidRing outflow animation — 取樣半徑隨時間遞減 → 煙由內往外流
+// ============================================================
+const VOID_ANIM_RES = 128;
+let voidAnimRAF = null, voidT = 0, voidLast = 0;
+let voidCache = null, voidAnimOff = null;
+
+function buildVoidCache() {
+  const p = getParams();
+  const n = VOID_ANIM_RES;
+  const R = 0.27 * Math.max(0.5, Math.min(1.4, p.freqScale));
+  const smoke = fbm(n, p.octaves, 4, 2.0, 0.55, p.seed, 1);
+  const fil   = fbm(n, Math.max(5, p.octaves), 7, 2.0, 0.5, p.seed + 41, 1);
+  const rad   = fbm(n, p.octaves, 5, 2.0, 0.5, p.seed + 61, 1);
+  const wx = fbm(n, 5, 3, 2.0, 0.5, p.seed + 11, 1);
+  const wy = fbm(n, 5, 3, 2.0, 0.5, p.seed + 23, 1);
+  const n1 = fbm(n, 4, 2, 2.0, 0.5, p.seed + 5, 1);
+  const N = n * n;
+  // 預先算好每個像素的極座標索引（含靜態域扭曲）與環遮罩
+  const colS = new Int32Array(N), rowBase = new Int32Array(N);
+  const colR = new Int32Array(N), rowRBase = new Int32Array(N);
+  const mask = new Float32Array(N), dPos = new Float32Array(N);
+  for (let j = 0; j < n; j++) {
+    const dy = j / n - 0.5;
+    for (let i = 0; i < n; i++) {
+      const dx = i / n - 0.5;
+      const idx = j * n + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const an = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
+      const wxo = (wx[idx] - 0.5) * 0.30 * n;
+      const wyo = (wy[idx] - 0.5) * 0.30 * n;
+      colS[idx]    = ((((an * n * 2 + wxo) | 0) % n) + n) % n;
+      rowBase[idx] = ((((r * n * 1.6 + wyo) | 0) % n) + n) % n;
+      colR[idx]    = (((an * n * 3) | 0) % n + n) % n;
+      rowRBase[idx] = (((r * n * 1.0) | 0) % n + n) % n;
+      const d = r - (R + (n1[idx] - 0.5) * 0.16);
+      dPos[idx] = Math.max(0, d);
+      mask[idx] = sstep(-0.10, 0.01, d) * Math.exp(-Math.max(0, d) * Math.max(0, d) / 0.012)
+                * (1 - Math.exp(-(r * r) / 0.0035)) * (1 - sstep(0.46, 0.50, r));
+    }
+  }
+  voidCache = { n, smoke, fil, rad, colS, rowBase, colR, rowRBase, mask, dPos };
+}
+
+function voidAnimFrame(ts) {
+  voidAnimRAF = requestAnimationFrame(voidAnimFrame);
+  if (!voidCache) return;
+  const canvas = document.getElementById('void-anim-canvas');
+  if (!canvas.offsetWidth) { voidLast = ts; return; }
+  const dt = voidLast ? Math.min(0.1, (ts - voidLast) / 1000) : 0;
+  voidLast = ts;
+  voidT += dt * (parseInt(document.getElementById('void-speed').value) / 10);
+  const { n, smoke, fil, rad, colS, rowBase, colR, rowRBase, mask, dPos } = voidCache;
+  // 半徑索引隨時間遞減 = 紋理向外流（兩層不同速率）
+  const off  = Math.floor(voidT * 0.55 * n);
+  const offR = Math.floor(voidT * 0.85 * n);
+  const arr = new Float32Array(n * n);
+  for (let idx = 0; idx < n * n; idx++) {
+    const m = mask[idx];
+    if (m <= 0.001) continue;
+    const rowS = ((rowBase[idx] - off) % n + n) % n;
+    const s = smoke[rowS * n + colS[idx]];
+    const f = fil[rowS * n + colS[idx]];
+    const rowR = ((rowRBase[idx] - offR) % n + n) % n;
+    const rd = rad[rowR * n + colR[idx]];
+    const ridge = Math.pow(1 - Math.abs(f * 2 - 1), 5);
+    const radS = Math.pow(Math.max(0, rd - 0.45) / 0.55, 2) * Math.exp(-dPos[idx] / 0.14);
+    const v = (Math.pow(s, 1.4) * 0.55 + ridge * 0.50 + radS * 0.45) * m;
+    arr[idx] = Math.min(1, Math.pow(v, 1.35));
+  }
+  if (!voidAnimOff) { voidAnimOff = document.createElement('canvas'); voidAnimOff.width = n; voidAnimOff.height = n; }
+  const ctx = voidAnimOff.getContext('2d');
+  const id = ctx.createImageData(n, n);
+  id.data.set(applyColormap(arr, getParams().colormap));
+  ctx.putImageData(id, 0, 0);
+  const dctx = canvas.getContext('2d');
+  dctx.imageSmoothingEnabled = true;
+  dctx.drawImage(voidAnimOff, 0, 0, canvas.width, canvas.height);
+}
+
+function startVoidAnim() {
+  if (voidAnimRAF === null) { voidLast = 0; voidAnimRAF = requestAnimationFrame(voidAnimFrame); }
+}
+function stopVoidAnim() {
+  if (voidAnimRAF !== null) { cancelAnimationFrame(voidAnimRAF); voidAnimRAF = null; }
+}
+
+// ============================================================
 // URL params — 分享與還原
 // ============================================================
 function shareURL() {
@@ -2849,6 +2950,9 @@ document.getElementById('flip-v').addEventListener('click', e => {
 document.getElementById('flame-speed').addEventListener('input', e => {
   document.getElementById('flame-speed-val').textContent = (e.target.value/10).toFixed(1)+'×';
 });
+document.getElementById('void-speed').addEventListener('input', e => {
+  document.getElementById('void-speed-val').textContent = (e.target.value/10).toFixed(1)+'×';
+});
 
 // ============================================================
 // Thumb panel folding — 桌面點標題可收合縮圖
@@ -2882,6 +2986,7 @@ const PREVIEW_TAB_DEFS = [
   { id: 'scroll',    label: 'UV滾動',  sec: 'scroll-section' },
   { id: 'flow',      label: '流動',    sec: 'flow-section' },
   { id: 'flameanim', label: '擾動',    sec: 'flame-anim-section' },
+  { id: 'voidflow',  label: '流出',    sec: 'void-anim-section' },
 ];
 
 function buildPreviewTabs() {
@@ -2891,6 +2996,7 @@ function buildPreviewTabs() {
   PREVIEW_TAB_DEFS.forEach(d => {
     if (d.id === 'flow' && !isFlow) return;
     if (d.id === 'flameanim' && currentType !== 'flame') return;
+    if (d.id === 'voidflow' && currentType !== 'voidring') return;
     if (isFlow && (d.id === 'tile' || d.id === 'dissolve' || d.id === 'scroll')) return;
     const b = document.createElement('button');
     b.className = 'type-tab' + (previewTab === d.id ? ' active' : '');
@@ -2906,11 +3012,12 @@ function applyPreviewTab() {
   if (isFlow && ['tile','dissolve','scroll'].includes(previewTab)) previewTab = 'live';
   if (!isFlow && previewTab === 'flow') previewTab = 'live';
   if (currentType !== 'flame' && previewTab === 'flameanim') previewTab = 'live';
+  if (currentType !== 'voidring' && previewTab === 'voidflow') previewTab = 'live';
   buildPreviewTabs();
 
   const main = document.getElementById('main-panel');
   const thumbs = document.querySelector('.thumbs');
-  const secs = { tile: 'tile-section', dissolve: 'dissolve-section', scroll: 'scroll-section', flow: 'flow-section', flameanim: 'flame-anim-section' };
+  const secs = { tile: 'tile-section', dissolve: 'dissolve-section', scroll: 'scroll-section', flow: 'flow-section', flameanim: 'flame-anim-section', voidflow: 'void-anim-section' };
 
   if (window.innerWidth > 640) {
     // 桌面：主面板 + 縮圖欄全部還原，flow/flame 相關顯示依類型
@@ -2921,6 +3028,7 @@ function applyPreviewTab() {
     document.getElementById('scroll-section').style.display = isFlow ? 'none' : '';
     document.getElementById('flow-section').style.display = isFlow ? '' : 'none';
     document.getElementById('flame-anim-section').style.display = currentType === 'flame' ? '' : 'none';
+    document.getElementById('void-anim-section').style.display = currentType === 'voidring' ? '' : 'none';
     return;
   }
   // 手機：一次只顯示一個畫面
