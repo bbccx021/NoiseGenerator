@@ -362,34 +362,6 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
           </div>
           <canvas id="flame-anim-canvas" width="300" height="300"></canvas>
         </div>
-
-        <!-- Slash lab: 展開 / 硬邊 / 撕裂（only for slash） -->
-        <div id="slash-unroll-section" class="preview-col" style="display:none">
-          <div class="panel-header">
-            <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">展開檢視</span>
-            <span class="res-info" style="margin-left:auto">橫=角度 縱=半徑</span>
-          </div>
-          <canvas id="slash-unroll-canvas" width="300" height="300"></canvas>
-        </div>
-        <div id="slash-hard-section" class="preview-col" style="display:none">
-          <div class="panel-header">
-            <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">硬邊檢視</span>
-            <input type="range" id="slash-hard" min="10" max="100" value="35" class="hdr-slider" style="margin-left:auto">
-            <span id="slash-hard-val" class="res-info" style="min-width:28px;text-align:right">3.5×</span>
-          </div>
-          <canvas id="slash-hard-canvas" width="300" height="300"></canvas>
-        </div>
-        <div id="slash-warp-section" class="preview-col" style="display:none">
-          <div class="panel-header">
-            <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">撕裂檢視</span>
-            <input type="range" id="slash-warp" min="0" max="100" value="35" class="hdr-slider" style="margin-left:auto">
-            <span id="slash-warp-val" class="res-info" style="min-width:28px;text-align:right">35%</span>
-          </div>
-          <canvas id="slash-warp-canvas" width="300" height="300"></canvas>
-        </div>
       </div>
     </div>
   </div>
@@ -891,26 +863,107 @@ function generateFlowmapGray(size, octaves, seed, freqScale) {
 // UE-style generators — polar sprites & patterns
 // ============================================================
 function generateShockwave(size, octaves, seed, freqScale) {
-  const n   = fbm(size, Math.min(octaves, 6), 3, 2.0, 0.5, seed, 1);
-  const ang = fbm(size, 4, 5, 2.0, 0.5, seed + 77, 1);     // 角度方向亮度變化
-  const rings = Math.max(3, Math.round(8 * freqScale));
-  const out = new Float32Array(size * size);
+  // 能量爆震環：主環光帶 + 環上電弧細絲 + 內緣放射尖刺 + 外放煙絲 + 黑心
+  const R = 0.30 * Math.max(0.5, Math.min(1.4, freqScale));     // 縮放控制環半徑
+  const n1  = fbm(size, Math.min(octaves, 6), 3, 2.0, 0.5, seed, 1);   // 環形扭曲
+  // 徑向拉伸場：放射狀的煙絲與尖刺
+  const N = size * size;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  const rows2 = new Float32Array(N), cols2 = new Float32Array(N);
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
     for (let i = 0; i < size; i++) {
       const dx = i / size - 0.5;
       const idx = j * size + i;
       const r = Math.sqrt(dx * dx + dy * dy);
-      const distort = (n[idx] - 0.5) * 0.10;
-      // 鋸齒波環形剖面：鋒利前緣 + 漸消尾跡，比正弦環更像爆震波
-      let s = ((r + distort) * rings) % 1; if (s < 0) s += 1;
-      let w = Math.pow(1 - s, 2.8) * 0.75 + Math.pow(1 - s, 14) * 0.55;
-      // 前緣抗鋸齒：在 3% 環距內平滑淡入
-      let aa = Math.min(1, s / 0.03);
-      w *= aa * aa * (3 - 2 * aa);
-      w *= 0.65 + ang[idx] * 0.7;                          // 環上明暗不均，更自然
-      const fall = Math.pow(Math.max(0, 1 - r * 2), 1.15);
-      out[idx] = Math.min(1, w * fall);
+      const an = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
+      cols[idx]  = (an * size * 2) % size;       // 外放煙絲：角向慢、徑向慢 → 粗放射絲
+      rows[idx]  = r * size * 0.45;
+      cols2[idx] = (an * size * 6) % size;       // 內緣尖刺：角向密
+      rows2[idx] = r * size * 0.8;
+    }
+  }
+  const wisp = mapCoordsBilinear(fbm(size, octaves, 5, 2.0, 0.5, seed + 31, 1), size, size, rows, cols);
+  const spik = mapCoordsBilinear(fbm(size, Math.max(4, octaves - 2), 7, 2.0, 0.45, seed + 53, 1), size, size, rows2, cols2);
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const d = r - (R + (n1[idx] - 0.5) * 0.11);           // 扭曲後的環距離場
+      // a) 主環光帶（細）
+      const ring = Math.exp(-(d * d) / 0.0012);
+      // b) 環上電弧細絲（兩條，受不同噪波強力再扭 → 破碎電感）
+      const de1 = d + (wisp[idx] - 0.5) * 0.09;
+      const de2 = d + (spik[idx] - 0.5) * 0.13;
+      const elec = Math.min(1, 0.010 / (Math.abs(de1) + 0.007))
+                 + Math.min(1, 0.007 / (Math.abs(de2) + 0.007)) * 0.7;
+      // c) 內緣放射尖刺（咬進黑心的針）
+      const spInner = Math.pow(Math.max(0, spik[idx] * 1.4 - 0.55), 2.4)
+                    * Math.exp(-Math.pow((d + 0.09) / 0.09, 2)) * (d < 0 ? 1 : 0.2) * 1.4;
+      // d) 外放煙絲（火舌般的放射雲絲）
+      const wo = d > 0
+        ? Math.pow(Math.max(0, wisp[idx] - 0.40) / 0.60, 2.0) * Math.exp(-d / 0.17) * 1.35
+        : 0;
+      let v = ring * 0.35 + elec * 0.9 + spInner + wo;
+      v *= 1 - Math.exp(-(r * r) / 0.004);                  // 中心保持純黑
+      v *= 1 - sstep(0.46, 0.50, r);                        // 邊界收尾
+      out[idx] = Math.min(1, v);
+    }
+  }
+  return out;
+}
+
+function generateVoidRing(size, octaves, seed, freqScale) {
+  // 黑洞煙環：域扭曲煙霧 + ridged 細絲 + 內利外羽的環遮罩 + 黑心
+  const R = 0.27 * Math.max(0.5, Math.min(1.4, freqScale));
+  const N = size * size;
+  // 流體感域扭曲
+  const wx = fbm(size, 5, 3, 2.0, 0.5, seed + 11, 1);
+  const wy = fbm(size, 5, 3, 2.0, 0.5, seed + 23, 1);
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j * size + i;
+    cols[idx] = ((i + (wx[idx] - 0.5) * 0.30 * size) % size + size) % size;
+    rows[idx] = ((j + (wy[idx] - 0.5) * 0.30 * size) % size + size) % size;
+  }
+  const smoke = mapCoordsBilinear(fbm(size, octaves, 4, 2.0, 0.55, seed, 1), size, size, rows, cols);
+  const filW  = mapCoordsBilinear(fbm(size, Math.max(5, octaves), 7, 2.0, 0.5, seed + 41, 1), size, size, rows, cols);
+  // 徑向放射絲
+  const rows2 = new Float32Array(N), cols2 = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const an = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
+      cols2[idx] = (an * size * 3) % size;
+      rows2[idx] = Math.sqrt(dx * dx + dy * dy) * size * 0.5;
+    }
+  }
+  const rad = mapCoordsBilinear(fbm(size, octaves, 5, 2.0, 0.5, seed + 61, 1), size, size, rows2, cols2);
+  const n1 = fbm(size, 4, 2, 2.0, 0.5, seed + 5, 1);       // 環半徑低頻起伏
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const d = r - (R + (n1[idx] - 0.5) * 0.16);
+      // 環遮罩：內緣較利（黑洞咬邊）、外緣寬羽化
+      const mask = sstep(-0.10, 0.01, d) * Math.exp(-Math.max(0, d) * Math.max(0, d) / 0.012);
+      // ridged 細絲（纖維）
+      const ridge = Math.pow(1 - Math.abs(filW[idx] * 2 - 1), 5);
+      // 外放放射絲
+      const radS = Math.pow(Math.max(0, rad[idx] - 0.45) / 0.55, 2) * Math.exp(-Math.max(0, d) / 0.14);
+      let v = (Math.pow(smoke[idx], 1.4) * 0.55 + ridge * 0.50 + radS * 0.45) * mask;
+      v = Math.pow(v, 1.35);                                // 整體壓暗，只留亮絲
+      v *= 1 - Math.exp(-(r * r) / 0.0035);                 // 黑洞中心
+      v *= 1 - sstep(0.46, 0.50, r);
+      out[idx] = Math.min(1, v);
     }
   }
   return out;
@@ -1169,10 +1222,8 @@ function generateGlow(size, octaves, seed, freqScale) {
 
 function generateSlash(size, octaves, seed, freqScale) {
   const base = fbm(size, octaves, 4, 2.0, 0.5, seed, 1);
-  const fine = fbm(size, Math.max(4, octaves - 2), 8, 2.0, 0.45, seed + 31, 1);
   const N = size * size;
   const rows = new Float32Array(N), cols = new Float32Array(N);
-  const rows2 = new Float32Array(N), cols2 = new Float32Array(N);
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
     for (let i = 0; i < size; i++) {
@@ -1180,14 +1231,11 @@ function generateSlash(size, octaves, seed, freqScale) {
       const idx = j * size + i;
       const r = Math.sqrt(dx * dx + dy * dy);
       const a = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
-      cols[idx]  = a * size * 0.25;                         // 粗拖絲：沿弧向拉長
-      rows[idx]  = r * size * 2.2 * freqScale;
-      cols2[idx] = a * size * 0.4;                          // 細拖絲：更密更細
-      rows2[idx] = r * size * 4.8 * freqScale;
+      cols[idx] = a * size * 0.25;                          // 沿弧向拉長
+      rows[idx] = r * size * 2.2 * freqScale;               // 跨半徑細變化 → 拖絲
     }
   }
-  const s1 = mapCoordsBilinear(base, size, size, rows,  cols);
-  const s2 = mapCoordsBilinear(fine, size, size, rows2, cols2);
+  const str = mapCoordsBilinear(base, size, size, rows, cols);
   const out = new Float32Array(N);
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
@@ -1198,13 +1246,9 @@ function generateSlash(size, octaves, seed, freqScale) {
       const a = Math.abs(Math.atan2(dy, dx));
       const band = sstep(0.20, 0.30, r) * (1 - sstep(0.42, 0.52, r));
       const arcT = 1 - sstep(1.3, 2.5, a);
-      const edgeB = sstep(0.30, 0.45, r);
-      // 雙層拖絲調變
-      const strk = (0.40 + s1[idx] * 0.75) * (0.70 + s2[idx] * 0.50);
-      const body = band * arcT * (0.30 + edgeB * 0.85) * strk;
-      // 刀刃：外緣一道銳利亮脊
-      const blade = Math.exp(-Math.pow((r - 0.445) / 0.013, 2)) * arcT * (0.75 + s1[idx] * 0.45);
-      out[idx] = Math.max(0, Math.min(1, body + blade));
+      const edgeB = sstep(0.30, 0.45, r);                   // 外緣較利較亮
+      const v = band * arcT * (0.35 + edgeB * 1.1) * (0.5 + str[idx] * 0.9);
+      out[idx] = Math.max(0, Math.min(1, v));
     }
   }
   return out;
@@ -1732,6 +1776,7 @@ const GENERATORS = {
   distort:   generateDistort,
   flowmap:   generateFlowmapGray,
   shockwave: generateShockwave,
+  voidring:  generateVoidRing,
   streaks:   generateStreaks,
   vortex:    generateVortex,
   caustics:  generateCaustics,
@@ -1978,6 +2023,7 @@ const TYPE_LABELS = [
   ['distort',   '🌪 Distort     漸進扭曲'],
   ['flowmap',   '💧 Flowmap     流動速度場'],
   ['shockwave', '🎯 Shockwave  爆震環紋'],
+  ['voidring',  '🌑 VoidRing    黑洞煙環'],
   ['streaks',   '☀ Streaks     放射速度線'],
   ['vortex',    '🕳 Vortex      漩渦扭曲'],
   ['caustics',  '💎 Caustics    水面焦散'],
@@ -2098,7 +2144,7 @@ const TYPE_GROUPS = [
   { label: '細胞 Voronoi', keys: ['voronoi','crackle','voronoise','caustics'] },
   { label: '梯度 / 特效', keys: ['perlin','marble','energy','curl','electric'] },
   { label: '扭曲 / 流場', keys: ['warp','distort','flowmap'] },
-  { label: '極座標 Sprite', keys: ['shockwave','streaks','vortex'] },
+  { label: '極座標 Sprite', keys: ['shockwave','voidring','streaks','vortex'] },
   { label: '圖案 / 顆粒', keys: ['hex','sparkle','grain'] },
   { label: '打擊 / 魔法', keys: ['slash','trail','beam','bolt','flame','magic'] },
   { label: '煙霧 Sprite', keys: ['puff','plume','wisps','smokering'] },
@@ -2287,10 +2333,6 @@ function selectType(key) {
   document.getElementById('scroll-section').style.display = isFlow ? 'none' : '';
   document.getElementById('flow-section').style.display = isFlow ? '' : 'none';
   document.getElementById('flame-anim-section').style.display = key === 'flame' ? '' : 'none';
-  const isSlash = key === 'slash';
-  document.getElementById('slash-unroll-section').style.display = isSlash ? '' : 'none';
-  document.getElementById('slash-hard-section').style.display = isSlash ? '' : 'none';
-  document.getElementById('slash-warp-section').style.display = isSlash ? '' : 'none';
   if (isFlow) stopScrollAnim(); else { stopFlowAnim(); startScrollAnim(); }
   if (key !== 'flame') stopFlameAnim();
   applyPreviewTab();
@@ -2342,7 +2384,6 @@ function renderTilePreview() {
   renderTiledCanvas(document.getElementById('tile-canvas'), out, PREVIEW_CALC, tileCount, p.colormap);
   renderDissolve();
   updateScrollSource(out, p.colormap);
-  renderSlashLab();
 }
 
 // ============================================================
@@ -2485,8 +2526,7 @@ async function batchGenerate() {
 // Sync canvas logical size to CSS display size (for correct pixel output)
 // ============================================================
 function syncCanvasSizes() {
-  ['preview','tile-canvas','flow-canvas','dissolve-canvas','scroll-canvas','flame-anim-canvas',
-   'slash-unroll-canvas','slash-hard-canvas','slash-warp-canvas'].forEach(id => {
+  ['preview','tile-canvas','flow-canvas','dissolve-canvas','scroll-canvas','flame-anim-canvas'].forEach(id => {
     const c = document.getElementById(id);
     const w = c.offsetWidth;
     if (w > 0 && (c.width !== w || c.height !== w)) {
@@ -2653,71 +2693,6 @@ function stopFlameAnim() {
 }
 
 // ============================================================
-// Slash lab — 展開（極座標還原）/ 硬邊（極端對比）/ 撕裂（噪波扭曲）
-// ============================================================
-let slashWarpFX = null, slashWarpFY = null, slashWarpSeed = null;
-
-function renderSlashLab() {
-  if (currentType !== 'slash' || !lastOut) return;
-  renderSlashUnroll();
-  renderSlashHard();
-  renderSlashWarp();
-}
-
-function renderSlashUnroll() {
-  // 柱狀展開：橫軸=弧角（-2.5~2.5 rad）、縱軸=半徑（外緣在上）
-  // 直接反取樣極座標 → 看內圈擠壓 / 外圈拉伸後的細節存活狀況
-  const n = PREVIEW_CALC;
-  const N = n * n;
-  const rows = new Float32Array(N), cols = new Float32Array(N);
-  for (let j = 0; j < n; j++) {
-    const r = 0.52 - (j / n) * (0.52 - 0.16);              // 上=外緣 下=內緣
-    for (let i = 0; i < n; i++) {
-      const th = (i / n - 0.5) * 5.0;
-      const idx = j * n + i;
-      cols[idx] = (0.5 + Math.cos(th) * r) * n;
-      rows[idx] = (0.5 + Math.sin(th) * r) * n;
-    }
-  }
-  const out = mapCoordsBilinear(lastOut, n, n, rows, cols);
-  renderToCanvas(document.getElementById('slash-unroll-canvas'), out, n, getParams().colormap);
-}
-
-function renderSlashHard() {
-  // 極端對比：檢查刀刃咬合力與核心連續性
-  const n = PREVIEW_CALC;
-  const K = parseInt(document.getElementById('slash-hard').value) / 10;
-  const out = new Float32Array(lastOut.length);
-  for (let i = 0; i < lastOut.length; i++) {
-    out[i] = Math.max(0, Math.min(1, (lastOut[i] - 0.5) * K + 0.5));
-  }
-  renderToCanvas(document.getElementById('slash-hard-canvas'), out, n, getParams().colormap);
-}
-
-function renderSlashWarp() {
-  // 高頻噪波推歪：檢查拉絲被扯開後的撕裂質感與流向
-  const n = PREVIEW_CALC;
-  const p = getParams();
-  if (slashWarpSeed !== p.seed || !slashWarpFX) {
-    slashWarpFX = fbm(n, 5, 8, 2.0, 0.45, p.seed + 71, 1);
-    slashWarpFY = fbm(n, 5, 8, 2.0, 0.45, p.seed + 87, 1);
-    slashWarpSeed = p.seed;
-  }
-  const amp = (parseInt(document.getElementById('slash-warp').value) / 100) * 0.13 * n;
-  const N = n * n;
-  const rows = new Float32Array(N), cols = new Float32Array(N);
-  for (let j = 0; j < n; j++) {
-    for (let i = 0; i < n; i++) {
-      const idx = j * n + i;
-      cols[idx] = i + (slashWarpFX[idx] - 0.5) * amp * 2;
-      rows[idx] = j + (slashWarpFY[idx] - 0.5) * amp * 2;
-    }
-  }
-  const out = mapCoordsBilinear(lastOut, n, n, rows, cols);
-  renderToCanvas(document.getElementById('slash-warp-canvas'), out, n, p.colormap);
-}
-
-// ============================================================
 // URL params — 分享與還原
 // ============================================================
 function shareURL() {
@@ -2874,14 +2849,6 @@ document.getElementById('flip-v').addEventListener('click', e => {
 document.getElementById('flame-speed').addEventListener('input', e => {
   document.getElementById('flame-speed-val').textContent = (e.target.value/10).toFixed(1)+'×';
 });
-document.getElementById('slash-hard').addEventListener('input', e => {
-  document.getElementById('slash-hard-val').textContent = (e.target.value/10).toFixed(1)+'×';
-  renderSlashHard();
-});
-document.getElementById('slash-warp').addEventListener('input', e => {
-  document.getElementById('slash-warp-val').textContent = e.target.value + '%';
-  renderSlashWarp();
-});
 
 // ============================================================
 // Thumb panel folding — 桌面點標題可收合縮圖
@@ -2915,9 +2882,6 @@ const PREVIEW_TAB_DEFS = [
   { id: 'scroll',    label: 'UV滾動',  sec: 'scroll-section' },
   { id: 'flow',      label: '流動',    sec: 'flow-section' },
   { id: 'flameanim', label: '擾動',    sec: 'flame-anim-section' },
-  { id: 'unroll',    label: '展開',    sec: 'slash-unroll-section' },
-  { id: 'hard',      label: '硬邊',    sec: 'slash-hard-section' },
-  { id: 'warp',      label: '撕裂',    sec: 'slash-warp-section' },
 ];
 
 function buildPreviewTabs() {
@@ -2927,7 +2891,6 @@ function buildPreviewTabs() {
   PREVIEW_TAB_DEFS.forEach(d => {
     if (d.id === 'flow' && !isFlow) return;
     if (d.id === 'flameanim' && currentType !== 'flame') return;
-    if (['unroll','hard','warp'].includes(d.id) && currentType !== 'slash') return;
     if (isFlow && (d.id === 'tile' || d.id === 'dissolve' || d.id === 'scroll')) return;
     const b = document.createElement('button');
     b.className = 'type-tab' + (previewTab === d.id ? ' active' : '');
@@ -2943,13 +2906,11 @@ function applyPreviewTab() {
   if (isFlow && ['tile','dissolve','scroll'].includes(previewTab)) previewTab = 'live';
   if (!isFlow && previewTab === 'flow') previewTab = 'live';
   if (currentType !== 'flame' && previewTab === 'flameanim') previewTab = 'live';
-  if (currentType !== 'slash' && ['unroll','hard','warp'].includes(previewTab)) previewTab = 'live';
   buildPreviewTabs();
 
   const main = document.getElementById('main-panel');
   const thumbs = document.querySelector('.thumbs');
-  const secs = { tile: 'tile-section', dissolve: 'dissolve-section', scroll: 'scroll-section', flow: 'flow-section', flameanim: 'flame-anim-section',
-                 unroll: 'slash-unroll-section', hard: 'slash-hard-section', warp: 'slash-warp-section' };
+  const secs = { tile: 'tile-section', dissolve: 'dissolve-section', scroll: 'scroll-section', flow: 'flow-section', flameanim: 'flame-anim-section' };
 
   if (window.innerWidth > 640) {
     // 桌面：主面板 + 縮圖欄全部還原，flow/flame 相關顯示依類型
@@ -2960,10 +2921,6 @@ function applyPreviewTab() {
     document.getElementById('scroll-section').style.display = isFlow ? 'none' : '';
     document.getElementById('flow-section').style.display = isFlow ? '' : 'none';
     document.getElementById('flame-anim-section').style.display = currentType === 'flame' ? '' : 'none';
-    const isSlash = currentType === 'slash';
-    document.getElementById('slash-unroll-section').style.display = isSlash ? '' : 'none';
-    document.getElementById('slash-hard-section').style.display = isSlash ? '' : 'none';
-    document.getElementById('slash-warp-section').style.display = isSlash ? '' : 'none';
     return;
   }
   // 手機：一次只顯示一個畫面
