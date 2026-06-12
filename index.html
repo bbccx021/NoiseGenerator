@@ -32,6 +32,15 @@ h1::before{content:'';display:inline-block;width:3px;height:14px;background:var(
 .thumbs .preview-col>.panel-header{cursor:pointer;user-select:none}
 .fold-arrow{color:var(--dim);font-size:9px;flex-shrink:0}
 .preview-col.collapsed canvas{display:none}
+/* UV 滾動的 U/V 雙向控制列 */
+.uv-ctrl{display:flex;align-items:center;gap:5px;padding:4px 8px;background:var(--panel);border-bottom:1px solid var(--border)}
+.uv-ctrl input[type=range]{flex:1;min-width:0;accent-color:var(--accent);height:3px}
+.uv-lbl{font-size:9px;color:var(--dim);font-weight:700;flex-shrink:0}
+.uv-flip{background:var(--entry);color:var(--dim);border:1px solid var(--border);border-radius:4px;
+  font-size:10px;padding:1px 5px;cursor:pointer;flex-shrink:0;line-height:1.3;transition:background .1s}
+.uv-flip:hover{color:var(--text)}
+.uv-flip.active{background:var(--accent);color:var(--sel-text);border-color:var(--accent)}
+.preview-col.collapsed .uv-ctrl{display:none}
 /* 手機版畫面分頁列（桌面隱藏） */
 #preview-tabs{display:none}
 .hdr-slider{width:60px;flex:none;accent-color:var(--accent);height:3px;min-width:0}
@@ -44,6 +53,12 @@ details.section>summary::before{content:'';display:inline-block;width:2px;height
 details.section>summary::after{content:'▾';color:var(--dim);font-size:9px;margin-left:auto}
 details.section:not([open])>summary::after{content:'▸'}
 details.section>summary:hover{color:var(--text)}
+/* 進階子折疊（後處理內） */
+details.sub>summary{list-style:none;cursor:pointer;color:var(--dim);font-size:10px;padding:5px 0 3px;user-select:none;opacity:.8}
+details.sub>summary::-webkit-details-marker{display:none}
+details.sub>summary::before{content:'▸ ';font-size:9px}
+details.sub[open]>summary::before{content:'▾ '}
+details.sub>summary:hover{color:var(--text)}
 /* Type group label inside list */
 .type-group-lbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);padding:6px 10px 3px;opacity:.65;pointer-events:none;list-style:none}
 /* Type category tabs */
@@ -86,6 +101,9 @@ input[type=range]{flex:1;accent-color:var(--accent);height:3px}
 input[type=number]{background:var(--entry);color:var(--text);border:1px solid var(--border);
   border-radius:6px;padding:4px 8px;font-family:'Consolas',monospace;font-size:11px;outline:none;width:72px;transition:border-color .15s}
 input[type=number]:focus{border-color:var(--accent)}
+select{background:var(--entry);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:4px 6px;font-family:inherit;font-size:11px;outline:none;min-width:0}
+select:focus{border-color:var(--accent)}
 .seed-row{display:flex;gap:6px;align-items:center}
 /* ── Buttons ── */
 .btn{border:none;border-radius:7px;padding:8px 18px;font-family:'Segoe UI',system-ui,sans-serif;
@@ -181,20 +199,51 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
           <span class="sl-val" id="zoom-val">1.00×</span>
         </div>
         <div class="radio-row" id="cmap-row" style="padding:4px 0 2px"></div>
+        <div class="sl-row" style="padding-top:4px">
+          <span class="sl-lbl">拉伸</span>
+          <div class="radio-row" style="flex:1">
+            <label><input type="radio" name="stretch" value="1:1" checked> 1:1</label>
+            <label><input type="radio" name="stretch" value="2:1"> 2:1</label>
+            <label><input type="radio" name="stretch" value="4:1"> 4:1</label>
+            <label><input type="radio" name="stretch" value="8:1"> 8:1</label>
+            <label><input type="radio" name="stretch" value="1:2"> 1:2</label>
+            <label><input type="radio" name="stretch" value="1:4"> 1:4</label>
+          </div>
+        </div>
+      </details>
+
+      <details class="section">
+        <summary class="sec-hdr">混合圖層</summary>
+        <div class="chk-row">
+          <input type="checkbox" id="blend-on"><label for="blend-on">啟用第二層噪波</label>
+        </div>
+        <div class="sl-row">
+          <span class="sl-lbl">類型</span>
+          <select id="blend-type" style="flex:1"></select>
+        </div>
+        <div class="sl-row">
+          <span class="sl-lbl">種子</span>
+          <input type="number" id="blend-seed" value="7" min="0" max="99999" style="width:60px">
+        </div>
+        <div class="radio-row" id="blend-mode-row" style="padding:3px 0">
+          <label><input type="radio" name="blendmode" value="mul" checked> 相乘</label>
+          <label><input type="radio" name="blendmode" value="add"> 相加</label>
+          <label><input type="radio" name="blendmode" value="max"> 最大</label>
+          <label><input type="radio" name="blendmode" value="screen"> 濾色</label>
+        </div>
+        <div class="sl-row" style="padding-bottom:6px">
+          <span class="sl-lbl">強度</span>
+          <input type="range" id="blend-mix" min="0" max="100" value="100">
+          <span class="sl-val" id="blend-mix-val">100%</span>
+        </div>
       </details>
 
       <details class="section" open>
         <summary class="sec-hdr">後處理</summary>
-        <div class="chk-row"><input type="checkbox" id="invert"><label for="invert">反轉</label></div>
-        <div class="sl-row">
-          <span class="sl-lbl">黑點</span>
-          <input type="range" id="lev-lo" min="0" max="95" value="0">
-          <span class="sl-val" id="lev-lo-val">0.00</span>
-        </div>
-        <div class="sl-row">
-          <span class="sl-lbl">白點</span>
-          <input type="range" id="lev-hi" min="5" max="100" value="100">
-          <span class="sl-val" id="lev-hi-val">1.00</span>
+        <div class="chk-row" style="gap:8px">
+          <input type="checkbox" id="invert"><label for="invert">反轉</label>
+          <button class="btn btn-rand" style="margin-left:auto" onclick="autoLevels()">⚡ 自動色階</button>
+          <button class="btn btn-rand" onclick="resetPost()">重設</button>
         </div>
         <div class="sl-row">
           <span class="sl-lbl">對比</span>
@@ -206,11 +255,24 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
           <input type="range" id="gamma" min="2" max="30" value="10">
           <span class="sl-val" id="gamma-val">1.0×</span>
         </div>
-        <div class="sl-row">
-          <span class="sl-lbl">亮度</span>
-          <input type="range" id="bright" min="-10" max="10" value="0">
-          <span class="sl-val" id="bright-val">0.0</span>
-        </div>
+        <details class="sub">
+          <summary>進階（黑點 / 白點 / 亮度）</summary>
+          <div class="sl-row">
+            <span class="sl-lbl">黑點</span>
+            <input type="range" id="lev-lo" min="0" max="95" value="0">
+            <span class="sl-val" id="lev-lo-val">0.00</span>
+          </div>
+          <div class="sl-row">
+            <span class="sl-lbl">白點</span>
+            <input type="range" id="lev-hi" min="5" max="100" value="100">
+            <span class="sl-val" id="lev-hi-val">1.00</span>
+          </div>
+          <div class="sl-row">
+            <span class="sl-lbl">亮度</span>
+            <input type="range" id="bright" min="-10" max="10" value="0">
+            <span class="sl-val" id="bright-val">0.0</span>
+          </div>
+        </details>
       </details>
 
       <details class="section" open>
@@ -277,10 +339,56 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
           <div class="panel-header">
             <span class="fold-arrow">▾</span>
             <span style="font-size:10px;font-weight:600;color:var(--dim)">UV 滾動</span>
-            <input type="range" id="scroll-speed" min="0" max="40" value="12" class="hdr-slider" style="margin-left:auto">
-            <span id="scroll-speed-val" class="res-info" style="min-width:28px;text-align:right">1.2×</span>
+            <span id="scroll-uv-val" class="res-info" style="margin-left:auto">U 1.2 / V 0.6</span>
+          </div>
+          <div class="uv-ctrl">
+            <span class="uv-lbl">U</span>
+            <input type="range" id="scroll-u" min="0" max="20" value="12">
+            <button class="uv-flip" id="flip-u" title="U 方向翻轉">⇄</button>
+            <span class="uv-lbl">V</span>
+            <input type="range" id="scroll-v" min="0" max="20" value="6">
+            <button class="uv-flip" id="flip-v" title="V 方向翻轉">⇅</button>
           </div>
           <canvas id="scroll-canvas" width="300" height="300"></canvas>
+        </div>
+
+        <!-- Flame turbulence anim (only for flame) -->
+        <div id="flame-anim-section" class="preview-col" style="display:none">
+          <div class="panel-header">
+            <span class="fold-arrow">▾</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)">火焰擾動</span>
+            <input type="range" id="flame-speed" min="0" max="40" value="15" class="hdr-slider" style="margin-left:auto">
+            <span id="flame-speed-val" class="res-info" style="min-width:28px;text-align:right">1.5×</span>
+          </div>
+          <canvas id="flame-anim-canvas" width="300" height="300"></canvas>
+        </div>
+
+        <!-- Slash lab: 展開 / 硬邊 / 撕裂（only for slash） -->
+        <div id="slash-unroll-section" class="preview-col" style="display:none">
+          <div class="panel-header">
+            <span class="fold-arrow">▾</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)">展開檢視</span>
+            <span class="res-info" style="margin-left:auto">橫=角度 縱=半徑</span>
+          </div>
+          <canvas id="slash-unroll-canvas" width="300" height="300"></canvas>
+        </div>
+        <div id="slash-hard-section" class="preview-col" style="display:none">
+          <div class="panel-header">
+            <span class="fold-arrow">▾</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)">硬邊檢視</span>
+            <input type="range" id="slash-hard" min="10" max="100" value="35" class="hdr-slider" style="margin-left:auto">
+            <span id="slash-hard-val" class="res-info" style="min-width:28px;text-align:right">3.5×</span>
+          </div>
+          <canvas id="slash-hard-canvas" width="300" height="300"></canvas>
+        </div>
+        <div id="slash-warp-section" class="preview-col" style="display:none">
+          <div class="panel-header">
+            <span class="fold-arrow">▾</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)">撕裂檢視</span>
+            <input type="range" id="slash-warp" min="0" max="100" value="35" class="hdr-slider" style="margin-left:auto">
+            <span id="slash-warp-val" class="res-info" style="min-width:28px;text-align:right">35%</span>
+          </div>
+          <canvas id="slash-warp-canvas" width="300" height="300"></canvas>
         </div>
       </div>
     </div>
@@ -1061,8 +1169,10 @@ function generateGlow(size, octaves, seed, freqScale) {
 
 function generateSlash(size, octaves, seed, freqScale) {
   const base = fbm(size, octaves, 4, 2.0, 0.5, seed, 1);
+  const fine = fbm(size, Math.max(4, octaves - 2), 8, 2.0, 0.45, seed + 31, 1);
   const N = size * size;
   const rows = new Float32Array(N), cols = new Float32Array(N);
+  const rows2 = new Float32Array(N), cols2 = new Float32Array(N);
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
     for (let i = 0; i < size; i++) {
@@ -1070,11 +1180,14 @@ function generateSlash(size, octaves, seed, freqScale) {
       const idx = j * size + i;
       const r = Math.sqrt(dx * dx + dy * dy);
       const a = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
-      cols[idx] = a * size * 0.25;                          // 沿弧向拉長
-      rows[idx] = r * size * 2.2 * freqScale;               // 跨半徑細變化 → 拖絲
+      cols[idx]  = a * size * 0.25;                         // 粗拖絲：沿弧向拉長
+      rows[idx]  = r * size * 2.2 * freqScale;
+      cols2[idx] = a * size * 0.4;                          // 細拖絲：更密更細
+      rows2[idx] = r * size * 4.8 * freqScale;
     }
   }
-  const str = mapCoordsBilinear(base, size, size, rows, cols);
+  const s1 = mapCoordsBilinear(base, size, size, rows,  cols);
+  const s2 = mapCoordsBilinear(fine, size, size, rows2, cols2);
   const out = new Float32Array(N);
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
@@ -1085,9 +1198,13 @@ function generateSlash(size, octaves, seed, freqScale) {
       const a = Math.abs(Math.atan2(dy, dx));
       const band = sstep(0.20, 0.30, r) * (1 - sstep(0.42, 0.52, r));
       const arcT = 1 - sstep(1.3, 2.5, a);
-      const edgeB = sstep(0.30, 0.45, r);                   // 外緣較利較亮
-      const v = band * arcT * (0.35 + edgeB * 1.1) * (0.5 + str[idx] * 0.9);
-      out[idx] = Math.max(0, Math.min(1, v));
+      const edgeB = sstep(0.30, 0.45, r);
+      // 雙層拖絲調變
+      const strk = (0.40 + s1[idx] * 0.75) * (0.70 + s2[idx] * 0.50);
+      const body = band * arcT * (0.30 + edgeB * 0.85) * strk;
+      // 刀刃：外緣一道銳利亮脊
+      const blade = Math.exp(-Math.pow((r - 0.445) / 0.013, 2)) * arcT * (0.75 + s1[idx] * 0.45);
+      out[idx] = Math.max(0, Math.min(1, body + blade));
     }
   }
   return out;
@@ -1105,16 +1222,32 @@ function generateTrail(size, octaves, seed, freqScale) {
     }
   }
   const str = mapCoordsBilinear(base, size, size, rows, cols);
+  // 多股絲束：每股有自己的位置 / 寬度 / 衰減 / 擺動
+  const rng = new RNG(seed + 101);
+  const S = Math.max(3, Math.min(6, Math.round(octaves * 0.6)));
+  const yc = [], wd = [], dec = [], amp = [], wf = [], wp = [];
+  for (let k = 0; k < S; k++) {
+    yc.push(0.5 + (rng.rand() - 0.5) * 0.26);
+    wd.push(0.015 + rng.rand() * 0.030);
+    dec.push(1.2 + rng.rand() * 1.0);
+    amp.push(0.45 + rng.rand() * 0.55);
+    wf.push(6 + rng.rand() * 6);
+    wp.push(rng.rand() * 6.28);
+  }
   const out = new Float32Array(N);
   for (let j = 0; j < size; j++) {
     const v = j / size;
-    const band = Math.exp(-Math.pow((v - 0.5) / 0.15, 2));
     for (let i = 0; i < size; i++) {
       const u = i / size;
       const idx = j * size + i;
-      const head = Math.pow(1 - u, 1.6);
-      const tip = sstep(0, 0.05, u);
-      out[idx] = Math.max(0, Math.min(1, head * band * tip * (0.5 + str[idx] * 0.9)));
+      let b = 0;
+      for (let k = 0; k < S; k++) {
+        const yy = yc[k] + Math.sin(u * wf[k] + wp[k]) * 0.016;
+        b += Math.exp(-Math.pow((v - yy) / wd[k], 2)) * Math.pow(1 - u, dec[k]) * amp[k];
+      }
+      // 頭部光暈（拖尾起點的亮核）
+      const head = Math.exp(-((u - 0.05) * (u - 0.05)) / 0.004 - ((v - 0.5) * (v - 0.5)) / 0.015) * 0.9;
+      out[idx] = Math.min(1, (b * (0.55 + str[idx] * 0.6) + head) * sstep(0, 0.04, u));
     }
   }
   return out;
@@ -1122,17 +1255,34 @@ function generateTrail(size, octaves, seed, freqScale) {
 
 function generateBeam(size, octaves, seed, freqScale) {
   const n = fbm(size, octaves, 4, 2.0, 0.5, seed, freqScale);
+  const filN = fbm(size, 5, 3, 2.0, 0.5, seed + 21, 1);    // 纏繞絲的 1D 噪波來源
+  const rng = new RNG(seed + 55);
+  const nodeC = Math.max(2, Math.round(octaves / 3));      // 能量節點數
+  const nodes = [];
+  for (let k = 0; k < nodeC; k++) nodes.push(0.12 + rng.rand() * 0.76);
+  const rowA = (size * 0.23) | 0, rowB = (size * 0.61) | 0;
   const out = new Float32Array(size * size);
   for (let j = 0; j < size; j++) {
     const v = j / size;
-    const core = Math.exp(-Math.pow((v - 0.5) / 0.04, 2));
-    const halo = Math.exp(-Math.pow((v - 0.5) / 0.16, 2)) * 0.42;
+    const core = Math.exp(-Math.pow((v - 0.5) / 0.038, 2));
+    const halo = Math.exp(-Math.pow((v - 0.5) / 0.15, 2)) * 0.38;
     for (let i = 0; i < size; i++) {
       const u = i / size;
       const idx = j * size + i;
+      // 兩條繞核心遊走的電漿細絲
+      const offA = (filN[rowA * size + i] - 0.5) * 0.22;
+      const offB = (filN[rowB * size + i] - 0.5) * 0.26;
+      const filA = Math.exp(-Math.pow((v - 0.5 - offA) / 0.012, 2)) * 0.55;
+      const filB = Math.exp(-Math.pow((v - 0.5 - offB) / 0.010, 2)) * 0.42;
+      // 沿束的能量節點
+      let node = 0;
+      for (let k = 0; k < nodes.length; k++) {
+        const dx = u - nodes[k];
+        node += Math.exp(-(dx * dx) / 0.0015 - (v - 0.5) * (v - 0.5) / 0.0035) * 0.55;
+      }
       const cap = sstep(0, 0.08, u) * sstep(0, 0.08, 1 - u);
-      const m = 0.7 + (n[idx] - 0.5) * 0.7;
-      out[idx] = Math.max(0, Math.min(1, (core + halo) * cap * m));
+      const m = 0.72 + (n[idx] - 0.5) * 0.6;
+      out[idx] = Math.max(0, Math.min(1, (core * m + halo + filA + filB + node) * cap));
     }
   }
   return out;
@@ -1235,27 +1385,42 @@ function generateBolt(size, octaves, seed, freqScale) {
   return out;
 }
 
+function flameStretchField(arr, size, rowScale) {
+  // 垂直拉伸取樣 → 向上竄的湍流域（sprite 不需平鋪）
+  const N = size * size;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j * size + i;
+    cols[idx] = i;
+    rows[idx] = (j * rowScale) % size;
+  }
+  return mapCoordsBilinear(arr, size, size, rows, cols);
+}
+
 function generateFlame(size, octaves, seed, freqScale) {
-  const n = fbm(size, octaves, 4, 2.0, 0.5, seed, freqScale);
+  const turb = flameStretchField(fbm(size, octaves, 4, 2.0, 0.5, seed, freqScale), size, 0.40);
+  const ero  = flameStretchField(fbm(size, Math.max(4, octaves - 2), 7, 2.0, 0.45, seed + 4, freqScale), size, 0.55);
+  const warpN = fbm(size, 5, 3, 2.0, 0.5, seed + 9, 1);
   const out = new Float32Array(size * size);
-  const baseY = 0.80, hgt = 0.62;
+  const baseY = 0.84, hgt = 0.68;
   for (let j = 0; j < size; j++) {
     const v = j / size;
     const rel = Math.max(0, 1 - (baseY - v) / hgt);        // 1=底部 0=頂端
     const inBody = v < baseY && v > baseY - hgt;
-    const w = 0.21 * Math.pow(Math.max(0.001, rel), 0.65) + 0.02;
     for (let i = 0; i < size; i++) {
       const u = i / size;
       const idx = j * size + i;
       if (!inBody) { out[idx] = 0; continue; }
-      const dx = (u - 0.5) / w;
+      // 水平扭曲 → 火舌捲曲
+      const uu = u + (warpN[idx] - 0.5) * 0.22 * (1 - rel * 0.6);
+      const w = 0.20 * Math.pow(Math.max(0.001, rel), 0.6) + 0.035;
+      const dx = (uu - 0.5) / w;
       const body = Math.max(0, 1 - dx * dx);
-      // 頂端被噪波侵蝕 → 火舌
-      const erosion = n[idx] * Math.pow(1 - rel, 1.3) * 1.35;
-      let s = body * (1 + (n[idx] - 0.5) * 0.3) - erosion;
-      s = Math.max(0, s);
-      const core = Math.exp(-((u - 0.5) * (u - 0.5)) / 0.010 - (v - 0.70) * (v - 0.70) / 0.018) * 0.85;
-      out[idx] = Math.min(1, Math.pow(s, 0.8) + core * Math.min(1, s * 3));
+      // 強侵蝕 → 頂端碎裂成脫離的小火苗
+      let d = body * (0.72 + turb[idx] * 0.55) - ero[idx] * Math.pow(1 - rel, 1.05) * 1.45;
+      d = Math.max(0, d);
+      // 內外焰三層分帶：外焰 / 中焰 / 白熱內焰
+      out[idx] = Math.min(1, sstep(0.04, 0.18, d) * 0.34 + sstep(0.25, 0.45, d) * 0.33 + sstep(0.55, 0.78, d) * 0.33);
     }
   }
   return out;
@@ -1477,7 +1642,14 @@ function generateStarGlow(size, octaves, seed, freqScale) {
   const k = 1 / Math.max(0.25, freqScale);
   const sCore = 0.012 * k * k;
   const rays = octaves < 6 ? 4 : (octaves < 10 ? 6 : 8);   // octaves 控制芒數
-  const rot = new RNG(seed).rand() * Math.PI;
+  const rng = new RNG(seed);
+  const rot = rng.rand() * Math.PI;
+  // Ghost 光斑：沿對角軸排列的暗淡圓斑（鏡頭內反射感）
+  const ga = rot + 0.7;
+  const ghosts = [
+    { d: 0.17 * k, sz: 0.0009, b: 0.24 },
+    { d: 0.30 * k, sz: 0.0014, b: 0.15 },
+  ];
   const out = new Float32Array(size * size);
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
@@ -1487,7 +1659,15 @@ function generateStarGlow(size, octaves, seed, freqScale) {
       const r = Math.sqrt(r2);
       const a = Math.atan2(dy, dx) + rot;
       const ray = Math.pow(Math.abs(Math.cos(rays / 2 * a)), 22) * Math.exp(-r / (0.16 * k));
-      const v = Math.exp(-r2 / sCore) + Math.exp(-r2 / (sCore * 6)) * 0.28 + ray * 0.85;
+      // 斜向副芒：主芒間的細短光芒
+      const sub = Math.pow(Math.abs(Math.cos(rays / 2 * a + Math.PI / rays)), 44) * Math.exp(-r / (0.10 * k)) * 0.45;
+      let ghost = 0;
+      for (let g = 0; g < ghosts.length; g++) {
+        const gx = Math.cos(ga) * ghosts[g].d, gy = Math.sin(ga) * ghosts[g].d;
+        const ddx = dx - gx, ddy = dy - gy;
+        ghost += Math.exp(-(ddx * ddx + ddy * ddy) / ghosts[g].sz) * ghosts[g].b;
+      }
+      const v = Math.exp(-r2 / sCore) + Math.exp(-r2 / (sCore * 6)) * 0.28 + ray * 0.85 + sub + ghost;
       out[j * size + i] = Math.min(1, v);
     }
   }
@@ -1603,6 +1783,50 @@ function applyColormap(arr, colormap) {
     }
   }
   return out;
+}
+
+// ============================================================
+// Layer pipeline — 方向性拉伸 + 第二層噪波混合
+// ============================================================
+function stretchResample(arr, size, mulX, mulY) {
+  // 以整數倍頻率重取樣 → 保持無縫；mulY=4 即視覺上 X:Y = 4:1 拉絲
+  const N = size * size;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    for (let i = 0; i < size; i++) {
+      const idx = j * size + i;
+      cols[idx] = (i * mulX) % size;
+      rows[idx] = (j * mulY) % size;
+    }
+  }
+  return mapCoordsBilinear(arr, size, size, rows, cols);
+}
+
+function applyLayers(arr, size, p) {
+  // 1) 方向性拉伸（X:Y）
+  const [sx, sy] = p.stretch.split(':').map(Number);
+  const mulX = sy || 1, mulY = sx || 1;          // X 拉長 = 提高 Y 取樣頻率
+  if (mulX !== 1 || mulY !== 1) arr = stretchResample(arr, size, mulX, mulY);
+  // 2) 第二層噪波混合
+  if (p.blendOn && GENERATORS[p.blendType]) {
+    let b = GENERATORS[p.blendType](size, p.octaves, p.blendSeed, p.freqScale);
+    if (mulX !== 1 || mulY !== 1) b = stretchResample(b, size, mulX, mulY);
+    const out = new Float32Array(arr.length);
+    const m = p.blendMix;
+    for (let i = 0; i < arr.length; i++) {
+      const a = arr[i], bb = b[i];
+      let v;
+      switch (p.blendMode) {
+        case 'add':    v = Math.min(1, a + bb); break;
+        case 'max':    v = Math.max(a, bb); break;
+        case 'screen': v = 1 - (1 - a) * (1 - bb); break;
+        default:       v = a * bb;
+      }
+      out[i] = a * (1 - m) + v * m;
+    }
+    arr = out;
+  }
+  return arr;
 }
 
 function postprocess(arr, gamma=1.0, invert=false, brightness=0.0, contrast=1.0, levLo=0.0, levHi=1.0) {
@@ -1799,6 +2023,12 @@ function getParams() {
     contrast:  parseInt(document.getElementById('contrast').value) / 100,
     levLo:     parseInt(document.getElementById('lev-lo').value) / 100,
     levHi:     parseInt(document.getElementById('lev-hi').value) / 100,
+    stretch:   document.querySelector('input[name=stretch]:checked')?.value || '1:1',
+    blendOn:   document.getElementById('blend-on').checked,
+    blendType: document.getElementById('blend-type').value || 'cloud',
+    blendSeed: parseInt(document.getElementById('blend-seed').value) || 7,
+    blendMode: document.querySelector('input[name=blendmode]:checked')?.value || 'mul',
+    blendMix:  parseInt(document.getElementById('blend-mix').value) / 100,
     count:     parseInt(document.getElementById('count').value) || 5,
     allTypes:  document.getElementById('all-types').checked,
   };
@@ -1822,6 +2052,42 @@ function setProgress(pct) {
 function randomSeed() {
   document.getElementById('seed').value = Math.floor(Math.random()*99999);
   schedulePreview();
+}
+
+// ============================================================
+// 後處理快捷：自動色階 / 重設
+// ============================================================
+function autoLevels() {
+  if (!lastArr) return;
+  let lo = 1, hi = 0;
+  for (let i = 0; i < lastArr.length; i++) {
+    if (lastArr[i] < lo) lo = lastArr[i];
+    if (lastArr[i] > hi) hi = lastArr[i];
+  }
+  const loV = Math.max(0, Math.min(95, Math.round(lo * 100)));
+  const hiV = Math.max(loV + 5, Math.min(100, Math.round(hi * 100)));
+  document.getElementById('lev-lo').value = loV;
+  document.getElementById('lev-hi').value = hiV;
+  document.getElementById('lev-lo-val').textContent = (loV / 100).toFixed(2);
+  document.getElementById('lev-hi-val').textContent = (hiV / 100).toFixed(2);
+  setStatus(`⚡ 自動色階：${(loV/100).toFixed(2)} ~ ${(hiV/100).toFixed(2)} 拉伸至 0 ~ 1`, 'var(--green)');
+  renderTilePreview();
+}
+
+function resetPost() {
+  document.getElementById('invert').checked = false;
+  document.getElementById('lev-lo').value = 0;
+  document.getElementById('lev-hi').value = 100;
+  document.getElementById('contrast').value = 100;
+  document.getElementById('gamma').value = 10;
+  document.getElementById('bright').value = 0;
+  document.getElementById('lev-lo-val').textContent = '0.00';
+  document.getElementById('lev-hi-val').textContent = '1.00';
+  document.getElementById('contrast-val').textContent = '1.00×';
+  document.getElementById('gamma-val').textContent = '1.0×';
+  document.getElementById('bright-val').textContent = '0.0';
+  setStatus('後處理已重設', 'var(--dim)');
+  if (lastArr) renderTilePreview();
 }
 
 // ============================================================
@@ -1930,6 +2196,27 @@ function buildUI() {
     cr.appendChild(lbl);
   });
 
+  // Stretch radios
+  document.querySelectorAll('input[name=stretch]').forEach(r => r.addEventListener('change', schedulePreview));
+
+  // Blend layer controls
+  const bt = document.getElementById('blend-type');
+  TYPE_LABELS.forEach(([key, label]) => {
+    if (key === 'flowmap') return;
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = label.replace(/\s+/g, ' ');
+    bt.appendChild(opt);
+  });
+  bt.value = 'cloud';
+  bt.addEventListener('change', schedulePreview);
+  document.getElementById('blend-on').addEventListener('change', schedulePreview);
+  document.getElementById('blend-seed').addEventListener('input', schedulePreview);
+  document.querySelectorAll('input[name=blendmode]').forEach(r => r.addEventListener('change', schedulePreview));
+  document.getElementById('blend-mix').addEventListener('input', e => {
+    document.getElementById('blend-mix-val').textContent = e.target.value + '%';
+    schedulePreview();
+  });
+
   // Tile buttons
   const tb = document.getElementById('tile-btns');
   [1,2,4].forEach(t => {
@@ -1999,7 +2286,13 @@ function selectType(key) {
   document.getElementById('dissolve-section').style.display = isFlow ? 'none' : '';
   document.getElementById('scroll-section').style.display = isFlow ? 'none' : '';
   document.getElementById('flow-section').style.display = isFlow ? '' : 'none';
+  document.getElementById('flame-anim-section').style.display = key === 'flame' ? '' : 'none';
+  const isSlash = key === 'slash';
+  document.getElementById('slash-unroll-section').style.display = isSlash ? '' : 'none';
+  document.getElementById('slash-hard-section').style.display = isSlash ? '' : 'none';
+  document.getElementById('slash-warp-section').style.display = isSlash ? '' : 'none';
   if (isFlow) stopScrollAnim(); else { stopFlowAnim(); startScrollAnim(); }
+  if (key !== 'flame') stopFlameAnim();
   applyPreviewTab();
   schedulePreview();
 }
@@ -2027,8 +2320,9 @@ function runPreview() {
         renderRgbaToCanvas(document.getElementById('preview'), flowmapToRgba(cx, cy), PREVIEW_CALC);
         startFlowAnim(cx, cy, PREVIEW_CALC);
       } else {
-        lastArr = GENERATORS[p.type](PREVIEW_CALC, p.octaves, p.seed, p.freqScale);
+        lastArr = applyLayers(GENERATORS[p.type](PREVIEW_CALC, p.octaves, p.seed, p.freqScale), PREVIEW_CALC, p);
         renderTilePreview();
+        if (p.type === 'flame') { buildFlameCache(); startFlameAnim(); }
       }
       setLive('⬤ 即時預覽', 'var(--green)');
       setStatus(`${p.type}  ${p.size}×${p.size}  seed=${p.seed}  oct=${p.octaves}  ×${p.freqScale.toFixed(2)}`, 'var(--green)');
@@ -2048,6 +2342,7 @@ function renderTilePreview() {
   renderTiledCanvas(document.getElementById('tile-canvas'), out, PREVIEW_CALC, tileCount, p.colormap);
   renderDissolve();
   updateScrollSource(out, p.colormap);
+  renderSlashLab();
 }
 
 // ============================================================
@@ -2102,7 +2397,7 @@ function saveSingle() {
         const { cx, cy } = generateFlowmapField(p.size, p.octaves, p.seed, p.freqScale);
         canvas = rgbaToExportCanvas(flowmapToRgba(cx, cy), p.size);
       } else {
-        const arr = GENERATORS[p.type](p.size, p.octaves, p.seed, p.freqScale);
+        const arr = applyLayers(GENERATORS[p.type](p.size, p.octaves, p.seed, p.freqScale), p.size, p);
         const out = postprocess(arr, p.gamma, p.invert, p.brightness, p.contrast, p.levLo, p.levHi);
         canvas = arrToExportCanvas(out, p.size, p.colormap);
       }
@@ -2148,7 +2443,7 @@ async function batchGenerate() {
           const { cx, cy } = generateFlowmapField(p.size, p.octaves, seed, p.freqScale);
           canvas = rgbaToExportCanvas(flowmapToRgba(cx, cy), p.size);
         } else {
-          const arr = GENERATORS[type](p.size, p.octaves, seed, p.freqScale);
+          const arr = applyLayers(GENERATORS[type](p.size, p.octaves, seed, p.freqScale), p.size, p);
           const cm = type === 'energy' ? 'gold' : p.colormap;
           const out = postprocess(arr, p.gamma, p.invert, p.brightness, p.contrast, p.levLo, p.levHi);
           canvas = arrToExportCanvas(out, p.size, cm);
@@ -2190,7 +2485,8 @@ async function batchGenerate() {
 // Sync canvas logical size to CSS display size (for correct pixel output)
 // ============================================================
 function syncCanvasSizes() {
-  ['preview','tile-canvas','flow-canvas','dissolve-canvas','scroll-canvas'].forEach(id => {
+  ['preview','tile-canvas','flow-canvas','dissolve-canvas','scroll-canvas','flame-anim-canvas',
+   'slash-unroll-canvas','slash-hard-canvas','slash-warp-canvas'].forEach(id => {
     const c = document.getElementById(id);
     const w = c.offsetWidth;
     if (w > 0 && (c.width !== w || c.height !== w)) {
@@ -2243,7 +2539,8 @@ function renderDissolve() {
 // ============================================================
 let scrollSrc = null;        // offscreen canvas holding current texture
 let scrollRAF = null;
-let scrollOff = 0;
+let scrollOffU = 0, scrollOffV = 0;
+let scrollDirU = 1, scrollDirV = 1;   // 方向翻轉：1 正向 / -1 反向
 let scrollLast = 0;
 
 function updateScrollSource(out, colormap) {
@@ -2264,11 +2561,15 @@ function scrollFrame(ts) {
   if (!w) return;
   const dt = scrollLast ? (ts - scrollLast) / 1000 : 0;
   scrollLast = ts;
-  const speed = parseInt(document.getElementById('scroll-speed').value) / 10;
-  scrollOff = (scrollOff + dt * speed * w * 0.25) % w;
+  const su = parseInt(document.getElementById('scroll-u').value) / 10 * scrollDirU;
+  const sv = parseInt(document.getElementById('scroll-v').value) / 10 * scrollDirV;
+  scrollOffU += dt * su * w * 0.25;
+  scrollOffV += dt * sv * w * 0.25;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = true;
-  const ox = scrollOff, oy = scrollOff * 0.5 % w;
+  // 負向滾動也要正確 wrap
+  const ox = ((scrollOffU % w) + w) % w;
+  const oy = ((scrollOffV % w) + w) % w;
   ctx.drawImage(scrollSrc, ox - w, oy - w, w, w);
   ctx.drawImage(scrollSrc, ox,     oy - w, w, w);
   ctx.drawImage(scrollSrc, ox - w, oy,     w, w);
@@ -2280,6 +2581,140 @@ function startScrollAnim() {
 }
 function stopScrollAnim() {
   if (scrollRAF !== null) { cancelAnimationFrame(scrollRAF); scrollRAF = null; }
+}
+
+// ============================================================
+// Flame turbulence animation — 噪波域隨時間上捲，即時舔動
+// ============================================================
+const FLAME_ANIM_RES = 128;
+let flameAnimRAF = null, flameT = 0, flameLast = 0;
+let flameCache = null, flameAnimOff = null;
+
+function buildFlameCache() {
+  const p = getParams();
+  const n = FLAME_ANIM_RES;
+  flameCache = {
+    n,
+    turb: flameStretchField(fbm(n, p.octaves, 4, 2.0, 0.5, p.seed, p.freqScale), n, 0.40),
+    ero:  flameStretchField(fbm(n, Math.max(4, p.octaves - 2), 7, 2.0, 0.45, p.seed + 4, p.freqScale), n, 0.55),
+    sway: fbm(n, 5, 3, 2.0, 0.5, p.seed + 9, 1),
+  };
+}
+
+function flameAnimFrame(ts) {
+  flameAnimRAF = requestAnimationFrame(flameAnimFrame);
+  if (!flameCache) return;
+  const canvas = document.getElementById('flame-anim-canvas');
+  if (!canvas.offsetWidth) { flameLast = ts; return; }     // 面板隱藏時跳過
+  const dt = flameLast ? Math.min(0.1, (ts - flameLast) / 1000) : 0;
+  flameLast = ts;
+  flameT += dt * (parseInt(document.getElementById('flame-speed').value) / 10);
+
+  const n = flameCache.n;
+  const { turb, ero, sway } = flameCache;
+  // 三層噪波以不同速率向上捲動
+  const off1 = Math.floor(flameT * 0.55 * n) % n;
+  const off2 = Math.floor(flameT * 0.85 * n) % n;
+  const offS = Math.floor(flameT * 0.25 * n) % n;
+  const arr = new Float32Array(n * n);
+  const baseY = 0.84, hgt = 0.68;
+  for (let j = 0; j < n; j++) {
+    const v = j / n;
+    const rel = Math.max(0, 1 - (baseY - v) / hgt);
+    if (!(v < baseY && v > baseY - hgt)) continue;
+    const w = 0.20 * Math.pow(Math.max(0.001, rel), 0.6) + 0.035;
+    const jT = ((j + off1) % n) * n;
+    const jE = ((j + off2) % n) * n;
+    const jS = ((j + offS) % n) * n;
+    for (let i = 0; i < n; i++) {
+      const uu = i / n + (sway[jS + i] - 0.5) * 0.26 * (1 - rel * 0.5);
+      const dx = (uu - 0.5) / w;
+      const body = Math.max(0, 1 - dx * dx);
+      let d = body * (0.72 + turb[jT + i] * 0.55) - ero[jE + i] * Math.pow(1 - rel, 1.05) * 1.5;
+      d = Math.max(0, d);
+      arr[j * n + i] = Math.min(1, sstep(0.04, 0.18, d) * 0.34 + sstep(0.25, 0.45, d) * 0.33 + sstep(0.55, 0.78, d) * 0.33);
+    }
+  }
+  if (!flameAnimOff) { flameAnimOff = document.createElement('canvas'); flameAnimOff.width = n; flameAnimOff.height = n; }
+  const ctx = flameAnimOff.getContext('2d');
+  const id = ctx.createImageData(n, n);
+  id.data.set(applyColormap(arr, getParams().colormap));
+  ctx.putImageData(id, 0, 0);
+  const dctx = canvas.getContext('2d');
+  dctx.imageSmoothingEnabled = true;
+  dctx.drawImage(flameAnimOff, 0, 0, canvas.width, canvas.height);
+}
+
+function startFlameAnim() {
+  if (flameAnimRAF === null) { flameLast = 0; flameAnimRAF = requestAnimationFrame(flameAnimFrame); }
+}
+function stopFlameAnim() {
+  if (flameAnimRAF !== null) { cancelAnimationFrame(flameAnimRAF); flameAnimRAF = null; }
+}
+
+// ============================================================
+// Slash lab — 展開（極座標還原）/ 硬邊（極端對比）/ 撕裂（噪波扭曲）
+// ============================================================
+let slashWarpFX = null, slashWarpFY = null, slashWarpSeed = null;
+
+function renderSlashLab() {
+  if (currentType !== 'slash' || !lastOut) return;
+  renderSlashUnroll();
+  renderSlashHard();
+  renderSlashWarp();
+}
+
+function renderSlashUnroll() {
+  // 柱狀展開：橫軸=弧角（-2.5~2.5 rad）、縱軸=半徑（外緣在上）
+  // 直接反取樣極座標 → 看內圈擠壓 / 外圈拉伸後的細節存活狀況
+  const n = PREVIEW_CALC;
+  const N = n * n;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < n; j++) {
+    const r = 0.52 - (j / n) * (0.52 - 0.16);              // 上=外緣 下=內緣
+    for (let i = 0; i < n; i++) {
+      const th = (i / n - 0.5) * 5.0;
+      const idx = j * n + i;
+      cols[idx] = (0.5 + Math.cos(th) * r) * n;
+      rows[idx] = (0.5 + Math.sin(th) * r) * n;
+    }
+  }
+  const out = mapCoordsBilinear(lastOut, n, n, rows, cols);
+  renderToCanvas(document.getElementById('slash-unroll-canvas'), out, n, getParams().colormap);
+}
+
+function renderSlashHard() {
+  // 極端對比：檢查刀刃咬合力與核心連續性
+  const n = PREVIEW_CALC;
+  const K = parseInt(document.getElementById('slash-hard').value) / 10;
+  const out = new Float32Array(lastOut.length);
+  for (let i = 0; i < lastOut.length; i++) {
+    out[i] = Math.max(0, Math.min(1, (lastOut[i] - 0.5) * K + 0.5));
+  }
+  renderToCanvas(document.getElementById('slash-hard-canvas'), out, n, getParams().colormap);
+}
+
+function renderSlashWarp() {
+  // 高頻噪波推歪：檢查拉絲被扯開後的撕裂質感與流向
+  const n = PREVIEW_CALC;
+  const p = getParams();
+  if (slashWarpSeed !== p.seed || !slashWarpFX) {
+    slashWarpFX = fbm(n, 5, 8, 2.0, 0.45, p.seed + 71, 1);
+    slashWarpFY = fbm(n, 5, 8, 2.0, 0.45, p.seed + 87, 1);
+    slashWarpSeed = p.seed;
+  }
+  const amp = (parseInt(document.getElementById('slash-warp').value) / 100) * 0.13 * n;
+  const N = n * n;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      const idx = j * n + i;
+      cols[idx] = i + (slashWarpFX[idx] - 0.5) * amp * 2;
+      rows[idx] = j + (slashWarpFY[idx] - 0.5) * amp * 2;
+    }
+  }
+  const out = mapCoordsBilinear(lastOut, n, n, rows, cols);
+  renderToCanvas(document.getElementById('slash-warp-canvas'), out, n, p.colormap);
 }
 
 // ============================================================
@@ -2297,6 +2732,10 @@ function shareURL() {
     llo: document.getElementById('lev-lo').value,
     lhi: document.getElementById('lev-hi').value,
     inv: p.invert ? 1 : 0,
+    st: p.stretch,
+    bon: p.blendOn ? 1 : 0,
+    btyp: p.blendType, bsd: p.blendSeed, bmd: p.blendMode,
+    bmx: document.getElementById('blend-mix').value,
   });
   const url = location.origin + location.pathname + '?' + q.toString();
   const done = () => setStatus('🔗 已複製分享連結', 'var(--green)');
@@ -2370,6 +2809,21 @@ function applyParamsFromURL() {
     document.getElementById('lev-hi-val').textContent = (q.get('lhi')/100).toFixed(2);
   }
   if (q.get('inv') === '1') document.getElementById('invert').checked = true;
+  if (q.get('st')) {
+    const r = document.querySelector(`input[name=stretch][value="${q.get('st')}"]`);
+    if (r) r.checked = true;
+  }
+  if (q.get('bon') === '1') document.getElementById('blend-on').checked = true;
+  if (q.get('btyp') && GENERATORS[q.get('btyp')]) document.getElementById('blend-type').value = q.get('btyp');
+  if (q.get('bsd')) document.getElementById('blend-seed').value = parseInt(q.get('bsd')) || 7;
+  if (q.get('bmd')) {
+    const r = document.querySelector(`input[name=blendmode][value="${q.get('bmd')}"]`);
+    if (r) r.checked = true;
+  }
+  if (q.get('bmx')) {
+    document.getElementById('blend-mix').value = q.get('bmx');
+    document.getElementById('blend-mix-val').textContent = q.get('bmx') + '%';
+  }
 }
 
 // ============================================================
@@ -2396,8 +2850,37 @@ document.getElementById('dissolve-t').addEventListener('input', e => {
   document.getElementById('dissolve-t-val').textContent = e.target.value + '%';
   renderDissolve();
 });
-document.getElementById('scroll-speed').addEventListener('input', e => {
-  document.getElementById('scroll-speed-val').textContent = (e.target.value/10).toFixed(1)+'×';
+function updateScrollUVLabel() {
+  const u = (parseInt(document.getElementById('scroll-u').value) / 10 * scrollDirU).toFixed(1);
+  const v = (parseInt(document.getElementById('scroll-v').value) / 10 * scrollDirV).toFixed(1);
+  document.getElementById('scroll-uv-val').textContent = `U ${u} / V ${v}`;
+}
+['scroll-u', 'scroll-v'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', updateScrollUVLabel);
+  // 雙擊（手機雙觸）直接歸零
+  el.addEventListener('dblclick', () => { el.value = 0; updateScrollUVLabel(); });
+});
+document.getElementById('flip-u').addEventListener('click', e => {
+  scrollDirU *= -1;
+  e.target.classList.toggle('active', scrollDirU < 0);
+  updateScrollUVLabel();
+});
+document.getElementById('flip-v').addEventListener('click', e => {
+  scrollDirV *= -1;
+  e.target.classList.toggle('active', scrollDirV < 0);
+  updateScrollUVLabel();
+});
+document.getElementById('flame-speed').addEventListener('input', e => {
+  document.getElementById('flame-speed-val').textContent = (e.target.value/10).toFixed(1)+'×';
+});
+document.getElementById('slash-hard').addEventListener('input', e => {
+  document.getElementById('slash-hard-val').textContent = (e.target.value/10).toFixed(1)+'×';
+  renderSlashHard();
+});
+document.getElementById('slash-warp').addEventListener('input', e => {
+  document.getElementById('slash-warp-val').textContent = e.target.value + '%';
+  renderSlashWarp();
 });
 
 // ============================================================
@@ -2426,11 +2909,15 @@ function initThumbFolds() {
 // ============================================================
 let previewTab = 'live';
 const PREVIEW_TAB_DEFS = [
-  { id: 'live',     label: '即時' },
-  { id: 'tile',     label: '拼貼',    sec: 'tile-section' },
-  { id: 'dissolve', label: '溶解',    sec: 'dissolve-section' },
-  { id: 'scroll',   label: 'UV滾動',  sec: 'scroll-section' },
-  { id: 'flow',     label: '流動',    sec: 'flow-section' },
+  { id: 'live',      label: '即時' },
+  { id: 'tile',      label: '拼貼',    sec: 'tile-section' },
+  { id: 'dissolve',  label: '溶解',    sec: 'dissolve-section' },
+  { id: 'scroll',    label: 'UV滾動',  sec: 'scroll-section' },
+  { id: 'flow',      label: '流動',    sec: 'flow-section' },
+  { id: 'flameanim', label: '擾動',    sec: 'flame-anim-section' },
+  { id: 'unroll',    label: '展開',    sec: 'slash-unroll-section' },
+  { id: 'hard',      label: '硬邊',    sec: 'slash-hard-section' },
+  { id: 'warp',      label: '撕裂',    sec: 'slash-warp-section' },
 ];
 
 function buildPreviewTabs() {
@@ -2439,6 +2926,8 @@ function buildPreviewTabs() {
   const isFlow = currentType === 'flowmap';
   PREVIEW_TAB_DEFS.forEach(d => {
     if (d.id === 'flow' && !isFlow) return;
+    if (d.id === 'flameanim' && currentType !== 'flame') return;
+    if (['unroll','hard','warp'].includes(d.id) && currentType !== 'slash') return;
     if (isFlow && (d.id === 'tile' || d.id === 'dissolve' || d.id === 'scroll')) return;
     const b = document.createElement('button');
     b.className = 'type-tab' + (previewTab === d.id ? ' active' : '');
@@ -2453,20 +2942,28 @@ function applyPreviewTab() {
   const isFlow = currentType === 'flowmap';
   if (isFlow && ['tile','dissolve','scroll'].includes(previewTab)) previewTab = 'live';
   if (!isFlow && previewTab === 'flow') previewTab = 'live';
+  if (currentType !== 'flame' && previewTab === 'flameanim') previewTab = 'live';
+  if (currentType !== 'slash' && ['unroll','hard','warp'].includes(previewTab)) previewTab = 'live';
   buildPreviewTabs();
 
   const main = document.getElementById('main-panel');
   const thumbs = document.querySelector('.thumbs');
-  const secs = { tile: 'tile-section', dissolve: 'dissolve-section', scroll: 'scroll-section', flow: 'flow-section' };
+  const secs = { tile: 'tile-section', dissolve: 'dissolve-section', scroll: 'scroll-section', flow: 'flow-section', flameanim: 'flame-anim-section',
+                 unroll: 'slash-unroll-section', hard: 'slash-hard-section', warp: 'slash-warp-section' };
 
   if (window.innerWidth > 640) {
-    // 桌面：主面板 + 縮圖欄全部還原，flow 相關顯示依類型
+    // 桌面：主面板 + 縮圖欄全部還原，flow/flame 相關顯示依類型
     main.style.display = '';
     thumbs.style.display = '';
     document.getElementById('tile-section').style.display = isFlow ? 'none' : '';
     document.getElementById('dissolve-section').style.display = isFlow ? 'none' : '';
     document.getElementById('scroll-section').style.display = isFlow ? 'none' : '';
     document.getElementById('flow-section').style.display = isFlow ? '' : 'none';
+    document.getElementById('flame-anim-section').style.display = currentType === 'flame' ? '' : 'none';
+    const isSlash = currentType === 'slash';
+    document.getElementById('slash-unroll-section').style.display = isSlash ? '' : 'none';
+    document.getElementById('slash-hard-section').style.display = isSlash ? '' : 'none';
+    document.getElementById('slash-warp-section').style.display = isSlash ? '' : 'none';
     return;
   }
   // 手機：一次只顯示一個畫面
