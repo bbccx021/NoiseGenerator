@@ -167,50 +167,51 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
 <body>
 <div class="app">
   <h1>NoiseGen — Seamless Turbulence Texture Generator
-    <span style="margin-left:auto;font-size:9px;color:var(--dim);font-weight:400">v2026.06.11</span>
+    <button id="lang-btn" class="btn btn-rand" style="margin-left:auto" onclick="setLang(LANG==='en'?'zh':'en')">EN</button>
+    <span style="font-size:9px;color:var(--dim);font-weight:400;margin-left:8px">v2026.06.11</span>
   </h1>
   <div class="main">
     <!-- ── Left panel ── -->
     <div class="left">
       <details class="section" open>
-        <summary class="sec-hdr">貼圖類型</summary>
+        <summary class="sec-hdr" data-i18n="sec_type">貼圖類型</summary>
         <div id="type-tabs"></div>
         <ul id="type-list"></ul>
       </details>
 
       <details class="section" open>
-        <summary class="sec-hdr">特效預設庫</summary>
+        <summary class="sec-hdr" data-i18n="sec_preset">特效預設庫</summary>
         <div class="preset-grid" id="preset-grid"></div>
       </details>
 
       <details class="section" open>
-        <summary class="sec-hdr">解析度</summary>
+        <summary class="sec-hdr" data-i18n="sec_res">解析度</summary>
         <div class="radio-row" id="size-row" style="padding-bottom:4px"></div>
       </details>
 
       <details class="section" open>
-        <summary class="sec-hdr">隨機種子</summary>
+        <summary class="sec-hdr" data-i18n="sec_seed">隨機種子</summary>
         <div class="seed-row" style="padding-bottom:6px">
           <input type="number" id="seed" value="42" min="0" max="99999">
-          <button class="btn btn-rand" onclick="randomSeed()">🎲 隨機</button>
+          <button class="btn btn-rand" data-i18n="btn_rand" onclick="randomSeed()">🎲 隨機</button>
         </div>
       </details>
 
       <details class="section" open>
-        <summary class="sec-hdr">參數調整</summary>
+        <summary class="sec-hdr" data-i18n="sec_param">參數調整</summary>
         <div class="sl-row">
-          <span class="sl-lbl">細節層</span>
+          <span class="sl-lbl" data-i18n="lbl_detail">細節層</span>
           <input type="range" id="octaves" min="4" max="12" value="8">
           <span class="sl-val" id="octaves-val">8</span>
         </div>
         <div class="sl-row">
-          <span class="sl-lbl">縮放</span>
+          <span class="sl-lbl" data-i18n="lbl_zoom">縮放</span>
           <input type="range" id="zoom" min="1" max="16" value="4">
           <span class="sl-val" id="zoom-val">1.00×</span>
         </div>
         <div class="radio-row" id="cmap-row" style="padding:4px 0 2px"></div>
         <div class="sl-row" style="padding-top:4px">
-          <span class="sl-lbl">拉伸</span>
+          <span class="sl-lbl" data-i18n="lbl_stretch">拉伸</span>
           <div class="radio-row" style="flex:1">
             <label><input type="radio" name="stretch" value="1:1" checked> 1:1</label>
             <label><input type="radio" name="stretch" value="2:1"> 2:1</label>
@@ -223,35 +224,40 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
       </details>
 
       <details class="section">
-        <summary class="sec-hdr">混合圖層</summary>
+        <summary class="sec-hdr" data-i18n="sec_blend">混合圖層</summary>
         <div class="chk-row">
-          <input type="checkbox" id="blend-on"><label for="blend-on">啟用第二層噪波</label>
+          <input type="checkbox" id="blend-on"><label for="blend-on" data-i18n="chk_blend">啟用第二層噪波</label>
         </div>
         <div class="sl-row">
-          <span class="sl-lbl">類型</span>
+          <span class="sl-lbl" data-i18n="lbl_type">類型</span>
           <select id="blend-type" style="flex:1"></select>
         </div>
         <div class="sl-row">
-          <span class="sl-lbl">種子</span>
+          <span class="sl-lbl" data-i18n="lbl_seed">種子</span>
           <input type="number" id="blend-seed" value="7" min="0" max="99999" style="width:60px">
         </div>
         <div class="radio-row" id="blend-mode-row" style="padding:3px 0">
-          <label><input type="radio" name="blendmode" value="mul" checked> 相乘</label>
-          <label><input type="radio" name="blendmode" value="add"> 相加</label>
-          <label><input type="radio" name="blendmode" value="max"> 最大</label>
-          <label><input type="radio" name="blendmode" value="screen"> 濾色</label>
+          <label><input type="radio" name="blendmode" value="mul" checked> <span data-i18n="bm_mul">相乘</span></label>
+          <label><input type="radio" name="blendmode" value="add"> <span data-i18n="bm_add">相加</span></label>
+          <label><input type="radio" name="blendmode" value="max"> <span data-i18n="bm_max">最大</span></label>
+          <label><input type="radio" name="blendmode" value="min"> <span data-i18n="bm_min">最小</span></label>
+          <label><input type="radio" name="blendmode" value="screen"> <span data-i18n="bm_screen">濾色</span></label>
+          <label><input type="radio" name="blendmode" value="overlay"> <span data-i18n="bm_overlay">覆蓋</span></label>
+          <label><input type="radio" name="blendmode" value="soft"> <span data-i18n="bm_soft">柔光</span></label>
+          <label><input type="radio" name="blendmode" value="diff"> <span data-i18n="bm_diff">差值</span></label>
+          <label><input type="radio" name="blendmode" value="sub"> <span data-i18n="bm_sub">相減</span></label>
         </div>
         <div class="sl-row" style="padding-bottom:6px">
-          <span class="sl-lbl">強度</span>
+          <span class="sl-lbl" data-i18n="lbl_strength">強度</span>
           <input type="range" id="blend-mix" min="0" max="100" value="100">
           <span class="sl-val" id="blend-mix-val">100%</span>
         </div>
       </details>
 
       <details class="section">
-        <summary class="sec-hdr">通道打包 RGBA</summary>
+        <summary class="sec-hdr" data-i18n="sec_pack">通道打包 RGBA</summary>
         <div class="chk-row">
-          <input type="checkbox" id="pack-on"><label for="pack-on">啟用打包預覽</label>
+          <input type="checkbox" id="pack-on"><label for="pack-on" data-i18n="chk_pack">啟用打包預覽</label>
         </div>
         <div class="sl-row">
           <span class="sl-lbl" style="color:#f08080;min-width:14px">R</span>
@@ -274,20 +280,20 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
           <input type="number" id="pack-a-seed" class="pack-seed" value="21" min="0" max="99999" style="width:52px">
         </div>
         <div class="chk-row" style="padding:5px 0 7px">
-          <button class="btn btn-rand" onclick="downloadPacked()">⬇ 下載打包 PNG</button>
+          <button class="btn btn-rand" data-i18n="btn_packdl" onclick="downloadPacked()">⬇ 下載打包 PNG</button>
         </div>
       </details>
 
       <details class="section" open>
-        <summary class="sec-hdr">後處理</summary>
+        <summary class="sec-hdr" data-i18n="sec_post">後處理</summary>
         <canvas id="hist" height="36" style="width:100%;height:36px;background:var(--surface);border:1px solid var(--border);border-radius:4px;display:block;margin:2px 0 4px"></canvas>
         <div class="chk-row" style="gap:8px">
-          <input type="checkbox" id="invert"><label for="invert">反轉</label>
-          <button class="btn btn-rand" style="margin-left:auto" onclick="autoLevels()">⚡ 自動色階</button>
-          <button class="btn btn-rand" onclick="resetPost()">重設</button>
+          <input type="checkbox" id="invert"><label for="invert" data-i18n="chk_invert">反轉</label>
+          <button class="btn btn-rand" data-i18n="btn_auto" style="margin-left:auto" onclick="autoLevels()">⚡ 自動色階</button>
+          <button class="btn btn-rand" data-i18n="btn_reset" onclick="resetPost()">重設</button>
         </div>
         <div class="sl-row">
-          <span class="sl-lbl">對比</span>
+          <span class="sl-lbl" data-i18n="lbl_contrast">對比</span>
           <input type="range" id="contrast" min="50" max="250" value="100">
           <span class="sl-val" id="contrast-val">1.00×</span>
         </div>
@@ -297,19 +303,19 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
           <span class="sl-val" id="gamma-val">1.0×</span>
         </div>
         <details class="sub">
-          <summary>進階（黑點 / 白點 / 亮度）</summary>
+          <summary data-i18n="adv_levels">進階（黑點 / 白點 / 亮度）</summary>
           <div class="sl-row">
-            <span class="sl-lbl">黑點</span>
+            <span class="sl-lbl" data-i18n="lbl_black">黑點</span>
             <input type="range" id="lev-lo" min="0" max="95" value="0">
             <span class="sl-val" id="lev-lo-val">0.00</span>
           </div>
           <div class="sl-row">
-            <span class="sl-lbl">白點</span>
+            <span class="sl-lbl" data-i18n="lbl_white">白點</span>
             <input type="range" id="lev-hi" min="5" max="100" value="100">
             <span class="sl-val" id="lev-hi-val">1.00</span>
           </div>
           <div class="sl-row">
-            <span class="sl-lbl">亮度</span>
+            <span class="sl-lbl" data-i18n="lbl_bright">亮度</span>
             <input type="range" id="bright" min="-10" max="10" value="0">
             <span class="sl-val" id="bright-val">0.0</span>
           </div>
@@ -317,14 +323,14 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
       </details>
 
       <details class="section" open>
-        <summary class="sec-hdr">批次下載</summary>
+        <summary class="sec-hdr" data-i18n="sec_batch">批次下載</summary>
         <div class="sl-row" style="padding-bottom:2px">
-          <span class="sl-lbl">數量</span>
+          <span class="sl-lbl" data-i18n="lbl_count">數量</span>
           <input type="number" id="count" value="5" min="1" max="50" style="width:60px">
         </div>
         <div class="chk-row" style="padding-bottom:6px">
           <input type="checkbox" id="all-types">
-          <label for="all-types">全部類型一起生成</label>
+          <label for="all-types" data-i18n="chk_alltypes">全部類型一起生成</label>
         </div>
       </details>
     </div>
@@ -348,7 +354,7 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <div id="tile-section" class="preview-col">
           <div class="panel-header">
             <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">拼貼</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)" data-i18n="pv_tile">拼貼</span>
             <span id="tile-btns" style="margin-left:auto"></span>
           </div>
           <canvas id="tile-canvas" width="300" height="300"></canvas>
@@ -358,8 +364,8 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <div id="flow-section" class="preview-col" style="display:none">
           <div class="panel-header">
             <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">流動預覽</span>
-            <span style="font-size:9px;color:var(--dim);opacity:.6;margin-left:auto">粒子速度場</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)" data-i18n="pv_flow">流動預覽</span>
+            <span style="font-size:9px;color:var(--dim);opacity:.6;margin-left:auto" data-i18n="pv_flowdesc">粒子速度場</span>
           </div>
           <canvas id="flow-canvas" width="300" height="300"></canvas>
         </div>
@@ -368,7 +374,7 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <div id="dissolve-section" class="preview-col">
           <div class="panel-header">
             <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">溶解</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)" data-i18n="pv_dissolve">溶解</span>
             <input type="range" id="dissolve-t" min="0" max="100" value="50" class="hdr-slider" style="margin-left:auto">
             <span id="dissolve-t-val" class="res-info" style="min-width:28px;text-align:right">50%</span>
           </div>
@@ -379,16 +385,16 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <div id="scroll-section" class="preview-col">
           <div class="panel-header">
             <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">UV 滾動</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)" data-i18n="pv_scroll">UV 滾動</span>
             <span id="scroll-uv-val" class="res-info" style="margin-left:auto">U 1.2 / V 0.6</span>
           </div>
           <div class="uv-ctrl">
             <span class="uv-lbl">U</span>
             <input type="range" id="scroll-u" min="0" max="20" value="12">
-            <button class="uv-flip" id="flip-u" title="U 方向翻轉">⇄</button>
+            <button class="uv-flip" id="flip-u" data-i18n-title="flip_u" title="U 方向翻轉">⇄</button>
             <span class="uv-lbl">V</span>
             <input type="range" id="scroll-v" min="0" max="20" value="6">
-            <button class="uv-flip" id="flip-v" title="V 方向翻轉">⇅</button>
+            <button class="uv-flip" id="flip-v" data-i18n-title="flip_v" title="V 方向翻轉">⇅</button>
           </div>
           <canvas id="scroll-canvas" width="300" height="300"></canvas>
         </div>
@@ -397,7 +403,7 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <div id="flame-anim-section" class="preview-col" style="display:none">
           <div class="panel-header">
             <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">火焰擾動</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)" data-i18n="pv_flame">火焰擾動</span>
             <input type="range" id="flame-speed" min="0" max="40" value="15" class="hdr-slider" style="margin-left:auto">
             <span id="flame-speed-val" class="res-info" style="min-width:28px;text-align:right">1.5×</span>
           </div>
@@ -408,7 +414,7 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <div id="pack-section" class="preview-col" style="display:none">
           <div class="panel-header">
             <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">打包</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)" data-i18n="pv_pack">打包</span>
             <span id="pack-views" style="margin-left:auto"></span>
           </div>
           <canvas id="pack-canvas" width="300" height="300"></canvas>
@@ -418,7 +424,7 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
         <div id="void-anim-section" class="preview-col" style="display:none">
           <div class="panel-header">
             <span class="fold-arrow">▾</span>
-            <span style="font-size:10px;font-weight:600;color:var(--dim)">向外流動</span>
+            <span style="font-size:10px;font-weight:600;color:var(--dim)" data-i18n="pv_void">向外流動</span>
             <input type="range" id="void-speed" min="0" max="40" value="15" class="hdr-slider" style="margin-left:auto">
             <span id="void-speed-val" class="res-info" style="min-width:28px;text-align:right">1.5×</span>
           </div>
@@ -430,13 +436,13 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
 
   <!-- ── Bottom bar ── -->
   <div class="bottom">
-    <button class="btn btn-save" onclick="saveSingle()">↓ 下載 PNG</button>
-    <button class="btn btn-batch" onclick="batchGenerate()">⊞ 批次 ZIP</button>
-    <button class="btn btn-batch" onclick="shareURL()">🔗 分享連結</button>
-    <div id="status" style="color:var(--dim);font-size:10px;font-family:'Consolas',monospace">就緒</div>
+    <button class="btn btn-save" data-i18n="btn_save" onclick="saveSingle()">↓ 下載 PNG</button>
+    <button class="btn btn-batch" data-i18n="btn_batch" onclick="batchGenerate()">⊞ 批次 ZIP</button>
+    <button class="btn btn-batch" data-i18n="btn_share" onclick="shareURL()">🔗 分享連結</button>
+    <div id="status" style="color:var(--dim);font-size:10px;font-family:'Consolas',monospace" data-i18n="st_ready">就緒</div>
     <div id="progress-wrap" style="width:80px"><div id="progress" style="width:0%"></div></div>
     <div style="flex:1"></div>
-    <span class="hotkey-hint">Space 重新生成 &nbsp;·&nbsp; S 下載 &nbsp;·&nbsp; R 隨機種子</span>
+    <span class="hotkey-hint" data-i18n="hotkeys">Space 重新生成 &nbsp;·&nbsp; S 下載 &nbsp;·&nbsp; R 隨機種子</span>
   </div>
 </div>
 
@@ -445,6 +451,87 @@ canvas{display:block;background:var(--surface);width:100%;aspect-ratio:1;border-
 
 <script>
 "use strict";
+
+// ============================================================
+// i18n — 中文 / English 語言切換
+// ============================================================
+let LANG = (function(){ try { return localStorage.getItem('noisegen_lang') || 'zh'; } catch(e){ return 'zh'; } })();
+const I18N = {
+  // 區塊標題
+  sec_type:['貼圖類型','Texture Type'], sec_preset:['特效預設庫','Effect Presets'],
+  sec_res:['解析度','Resolution'], sec_seed:['隨機種子','Random Seed'],
+  sec_param:['參數調整','Parameters'], sec_blend:['混合圖層','Blend Layer'],
+  sec_pack:['通道打包 RGBA','Channel Packing RGBA'], sec_post:['後處理','Post-Process'],
+  sec_batch:['批次下載','Batch Export'],
+  adv_levels:['進階（黑點 / 白點 / 亮度）','Advanced (black / white point, brightness)'],
+  // 標籤
+  lbl_detail:['細節層','Octaves'], lbl_zoom:['縮放','Scale'], lbl_stretch:['拉伸','Stretch'],
+  lbl_type:['類型','Type'], lbl_seed:['種子','Seed'], lbl_strength:['強度','Strength'],
+  lbl_contrast:['對比','Contrast'], lbl_black:['黑點','Black'], lbl_white:['白點','White'],
+  lbl_bright:['亮度','Bright'], lbl_count:['數量','Count'],
+  chk_blend:['啟用第二層噪波','Enable 2nd layer'], chk_pack:['啟用打包預覽','Enable pack preview'],
+  chk_invert:['反轉','Invert'], chk_alltypes:['全部類型一起生成','Generate all types'],
+  // 按鈕
+  btn_rand:['🎲 隨機','🎲 Random'], btn_auto:['⚡ 自動色階','⚡ Auto Levels'],
+  btn_reset:['重設','Reset'], btn_packdl:['⬇ 下載打包 PNG','⬇ Download Pack PNG'],
+  btn_save:['↓ 下載 PNG','↓ Save PNG'], btn_batch:['⊞ 批次 ZIP','⊞ Batch ZIP'],
+  btn_share:['🔗 分享連結','🔗 Share Link'],
+  // 混合模式
+  bm_mul:['相乘','Multiply'], bm_add:['相加','Add'], bm_max:['最大','Lighten'], bm_min:['最小','Darken'],
+  bm_screen:['濾色','Screen'], bm_overlay:['覆蓋','Overlay'], bm_soft:['柔光','Soft Light'],
+  bm_diff:['差值','Difference'], bm_sub:['相減','Subtract'],
+  // 色彩映射
+  cm_gray:['灰階','Gray'], cm_gold:['金色','Gold'], cm_plasma:['Plasma','Plasma'],
+  cm_fire:['火焰','Fire'], cm_ice:['冰','Ice'], cm_electric:['電','Electric'], cm_toxic:['毒','Toxic'],
+  cm_magma:['熔岩','Magma'], cm_normal:['法線','Normal'],
+  // 預覽面板 / 分頁
+  pv_live:['即時預覽','Live'], pv_tile:['拼貼','Tile'], pv_dissolve:['溶解','Dissolve'],
+  pv_scroll:['UV 滾動','UV Scroll'], pv_flow:['流動預覽','Flow'], pv_flowdesc:['粒子速度場','Velocity field'],
+  pv_flame:['火焰擾動','Flame Turb'], pv_pack:['打包','Pack'], pv_void:['向外流動','Outflow'],
+  tab_live:['即時','Live'], tab_tile:['拼貼','Tile'], tab_dissolve:['溶解','Dissolve'],
+  tab_scroll:['UV滾動','UV'], tab_flow:['流動','Flow'], tab_flame:['擾動','Turb'],
+  tab_void:['流出','Outflow'], tab_pack:['打包','Pack'],
+  // 類型分頁
+  tt_noise:['噪波','Noise'], tt_pattern:['圖案','Pattern'], tt_effect:['特效','Effect'],
+  // 類型分組
+  g_fbm:['FBM 分形','FBM Fractal'], g_cell:['細胞 Voronoi','Cell / Voronoi'],
+  g_grad:['梯度 / 特效','Gradient / FX'], g_warp:['扭曲 / 流場','Warp / Flow'],
+  g_polar:['極座標 Sprite','Polar Sprite'], g_pattern:['圖案 / 顆粒','Pattern / Grain'],
+  g_strike:['打擊 / 魔法','Strike / Magic'], g_smoke:['煙霧 Sprite','Smoke Sprite'],
+  g_glow:['光暈 Sprite','Glow Sprite'],
+  // 狀態 / 其他
+  st_ready:['就緒','Ready'], live_live:['⬤ 即時預覽','⬤ Live'],
+  hotkeys:['Space 重新生成  ·  S 下載  ·  R 隨機種子','Space regen  ·  S save  ·  R reseed'],
+  flip_u:['U 方向翻轉','Flip U'], flip_v:['V 方向翻轉','Flip V'],
+};
+function t(k){ const e = I18N[k]; return e ? e[LANG === 'en' ? 1 : 0] : k; }
+// 類型標籤：EN 模式去掉中文描述（只留 icon + 英文名）
+function typeLabelDisp(raw){ return LANG === 'en' ? raw.replace(/\s*[一-鿿].*$/, '') : raw; }
+// 分組 / 分頁 / 預設 / 預覽分頁 的標籤→i18n key 對照（標籤本身仍當 key 用，僅顯示翻譯）
+const GROUP_I18N = {'FBM 分形':'g_fbm','細胞 Voronoi':'g_cell','梯度 / 特效':'g_grad','扭曲 / 流場':'g_warp','極座標 Sprite':'g_polar','圖案 / 顆粒':'g_pattern','打擊 / 魔法':'g_strike','煙霧 Sprite':'g_smoke','光暈 Sprite':'g_glow'};
+const TAB_I18N = {'噪波':'tt_noise','圖案':'tt_pattern','特效':'tt_effect'};
+const PVTAB_I18N = {live:'tab_live',tile:'tab_tile',dissolve:'tab_dissolve',scroll:'tab_scroll',flow:'tab_flow',flameanim:'tab_flame',voidflow:'tab_void',pack:'tab_pack'};
+const PRESET_I18N = {fire:['🔥 火焰粒子','🔥 Fire Particle'],smoke:['💨 爆炸煙團','💨 Smoke Puff'],mist:['🌫 飄渺霧氣','🌫 Mist'],dissolve:['🫠 柔霧溶解','🫠 Soft Dissolve'],crackdis:['💥 碎裂溶解','💥 Crack Dissolve'],caustic:['🌊 水面焦散','🌊 Caustics'],shield:['🛡 能量護盾','🛡 Energy Shield'],speed:['☄ 速度拉絲','☄ Speed Streak']};
+function presetLabel(ps){ const e = PRESET_I18N[ps.id]; return e ? e[LANG === 'en' ? 1 : 0] : ps.label; }
+
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.getAttribute('data-i18n-title')); });
+  const lb = document.getElementById('lang-btn');
+  if (lb) lb.textContent = LANG === 'en' ? '中文' : 'EN';
+  document.documentElement.lang = LANG === 'en' ? 'en' : 'zh-TW';
+}
+function setLang(l) {
+  LANG = l;
+  try { localStorage.setItem('noisegen_lang', l); } catch(e){}
+  applyI18n();
+  // 重建動態 UI（標籤翻譯）
+  buildCmapRadios();
+  buildTypeTabs(); buildTypeList(); buildPresets();
+  applyPreviewTab();
+  updateResInfo();
+  setLive(t('live_live'), 'var(--green)');
+}
 
 // ============================================================
 // PRNG — xorshift32 (seeded, deterministic)
@@ -1264,6 +1351,238 @@ function generateGrain(size, octaves, seed, freqScale) {
 }
 
 // ============================================================
+// 圖案 / 特效擴充 — 網點 / 迷宮 / 雪花 / 蛛網 / 餘燼 / 傳送門
+// ============================================================
+function generateHalftone(size, octaves, seed, freqScale) {
+  // 噪波驅動點陣（無縫平鋪）：點大小由低頻場決定 → 漫畫網點漸層
+  const N = Math.max(6, Math.round(14 * Math.max(0.4, Math.min(2.2, freqScale))));
+  const field = fbm(size, Math.min(octaves, 6), 2, 2.0, 0.55, seed, 1);
+  const aa = 1.7 * N / size;                               // 以像素為單位的抗鋸齒（cell 單位）
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const y = j / size * N, cy = Math.floor(y), fy = y - cy - 0.5;
+    const syp = Math.round(((cy + 0.5) / N) * size) % size;
+    for (let i = 0; i < size; i++) {
+      const x = i / size * N, cx = Math.floor(x), fx = x - cx - 0.5;
+      const d = Math.sqrt(fx * fx + fy * fy);
+      const sxp = Math.round(((cx + 0.5) / N) * size) % size;
+      const radius = 0.10 + field[((syp % size) + size) % size * size + (((sxp % size) + size) % size)] * 0.46;
+      out[j * size + i] = 1 - sstep(radius - aa, radius + aa, d);
+    }
+  }
+  return out;
+}
+
+function generateTruchet(size, octaves, seed, freqScale) {
+  // Truchet 弧磚（無縫平鋪）：隨機定向的 1/4 圓弧拼出連續曲線 + 接點亮節
+  const N = Math.max(3, Math.round((octaves * 0.7 + 3) * Math.max(0.4, Math.min(2.2, freqScale))));
+  const sH = (seed % 9973) * 0.7;
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const y = j / size * N, cy = Math.floor(y), fy = y - cy;
+    for (let i = 0; i < size; i++) {
+      const x = i / size * N, cx = Math.floor(x), fx = x - cx;
+      const hv = Math.sin(cx * 127.1 + cy * 311.7 + sH) * 43758.5453;
+      const flip = (hv - Math.floor(hv)) > 0.5;             // frac → 乾淨 50/50 隨機定向
+      let d;
+      if (flip) {
+        d = Math.min(Math.abs(Math.sqrt(fx * fx + fy * fy) - 0.5), Math.abs(Math.sqrt((fx - 1) * (fx - 1) + (fy - 1) * (fy - 1)) - 0.5));
+      } else {
+        d = Math.min(Math.abs(Math.sqrt((fx - 1) * (fx - 1) + fy * fy) - 0.5), Math.abs(Math.sqrt(fx * fx + (fy - 1) * (fy - 1)) - 0.5));
+      }
+      const line = 1 - sstep(0.05, 0.11, d);
+      // 接點：四邊中點（電路節點感）
+      const nd = Math.min(
+        Math.sqrt((fx - 0.5) * (fx - 0.5) + fy * fy),
+        Math.sqrt((fx - 0.5) * (fx - 0.5) + (fy - 1) * (fy - 1)),
+        Math.sqrt(fx * fx + (fy - 0.5) * (fy - 0.5)),
+        Math.sqrt((fx - 1) * (fx - 1) + (fy - 0.5) * (fy - 0.5)));
+      const node = Math.exp(-nd * nd / 0.0035) * 0.55;
+      out[j * size + i] = Math.min(1, line * 0.9 + node);
+    }
+  }
+  return out;
+}
+
+function generateSnowflake(size, octaves, seed, freqScale) {
+  // 六重對稱樹枝冰晶 sprite
+  const rng = new RNG((seed * 2654435761) >>> 0 || 1); rng.next();
+  const rot = rng.rand() * Math.PI;
+  const k = Math.max(0.6, Math.min(1.3, freqScale));
+  const nb = Math.max(3, Math.min(6, Math.round(octaves * 0.6)));
+  const bx = [], bang = [], blen = [];
+  for (let b = 0; b < nb; b++) { bx.push((b + 0.7) / (nb + 0.5) * 0.42 * k); bang.push(0.65 + rng.rand() * 0.35); blen.push(0.05 + rng.rand() * 0.05); }
+  const Rmax = 0.45 * k, seg = Math.PI / 3;
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      let a = Math.atan2(dy, dx) + rot;
+      a = Math.abs(((a % seg) + seg) % seg - seg / 2);     // 摺疊成 30° 楔形
+      const sx = Math.cos(a) * r, sy = Math.sin(a) * r;
+      const fade = sstep(Rmax, 0.04, r);
+      let bv = Math.exp(-(sy * sy) / 0.0005) * fade;        // 主軸
+      for (let b = 0; b < nb; b++) {
+        const along = Math.exp(-Math.pow(sx - bx[b], 2) / 0.0007);
+        const br = Math.exp(-Math.pow(sy - (sx - bx[b]) * bang[b], 2) / 0.00035);
+        bv = Math.max(bv, along * br * fade * (sx > bx[b] ? 1 : 0));
+        // 分枝末端小菱
+        const td = Math.sqrt((sx - (bx[b] + blen[b])) * (sx - (bx[b] + blen[b])) + sy * sy);
+        bv = Math.max(bv, Math.exp(-td * td / 0.00025) * fade * 0.7);
+      }
+      const core = Math.exp(-r * r / 0.0014) * 0.8;
+      out[j * size + i] = Math.min(1, bv * 0.92 + core);
+    }
+  }
+  return out;
+}
+
+function generateSpiderweb(size, octaves, seed, freqScale) {
+  // 放射輻條 + 下垂同心環蛛網 sprite
+  const rng = new RNG(seed + 3); rng.next();
+  const spokes = Math.max(7, Math.min(14, octaves + 2));
+  const rings = Math.max(4, Math.round(6 * Math.max(0.5, Math.min(1.4, freqScale))));
+  const rot = rng.rand();
+  const R = 0.44 * Math.max(0.6, Math.min(1.2, freqScale));
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const ang = Math.atan2(dy, dx) + rot * Math.PI;
+      const spoke = Math.pow(Math.abs(Math.cos(ang * spokes / 2)), 46) * sstep(R, 0.025, r) * (r > 0.02 ? 1 : 0);
+      const t = ((ang / (2 * Math.PI / spokes)) % 1 + 1) % 1;
+      const dnear = Math.min(t, 1 - t) * 2;                 // 0=輻條 1=兩輻條間
+      const sag = 1 - dnear * dnear * 0.15;                 // 環在輻條間下垂
+      let ring = 0;
+      for (let kk = 1; kk <= rings; kk++) {
+        const rr = kk / rings * R * sag;
+        ring = Math.max(ring, Math.exp(-Math.pow((r - rr) / 0.010, 2)));
+      }
+      out[j * size + i] = Math.min(1, (spoke + ring * 0.9) * (1 - sstep(R - 0.03, R + 0.02, r)));
+    }
+  }
+  return out;
+}
+
+function generateEmbers(size, octaves, seed, freqScale) {
+  // 上升火星 + 短拖尾，底部較密較亮
+  const C = Math.max(14, Math.round(30 * Math.max(0.5, Math.min(2, freqScale))));
+  const rng = new RNG(seed + 11);
+  const px = new Float32Array(C), py = new Float32Array(C), sz = new Float32Array(C), br = new Float32Array(C);
+  const trailLen = 20 + octaves * 4;
+  for (let c = 0; c < C; c++) { px[c] = rng.rand(); py[c] = rng.rand(); sz[c] = 0.00018 + rng.rand() * 0.0007; br[c] = 0.5 + rng.rand() * 0.5; }
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      let b = 0;
+      for (let c = 0; c < C; c++) {
+        let dx = Math.abs(u - px[c]); if (dx > 0.5) dx = 1 - dx;   // 水平 wrap → 可平鋪
+        const dyRaw = v - py[c];
+        const sp = Math.exp(-(dx * dx + dyRaw * dyRaw) / sz[c]);
+        const trail = Math.exp(-(dx * dx) / (sz[c] * 0.5) - Math.max(0, dyRaw) * Math.max(0, dyRaw) / (sz[c] * trailLen)) * 0.5;
+        b += (sp + trail) * br[c] * (0.35 + v * 0.8);       // 底部亮
+      }
+      out[j * size + i] = Math.min(1, b);
+    }
+  }
+  return out;
+}
+
+function generatePortal(size, octaves, seed, freqScale) {
+  // 漩渦域扭曲 + 亮環 + 黑心（傳送門）
+  const k = Math.max(0.5, Math.min(1.3, freqScale));
+  const swirl = fbm(size, octaves, 4, 2.0, 0.55, seed, 1);
+  const n1 = fbm(size, 4, 2, 2.0, 0.5, seed + 7, 1);
+  const N = size * size, twist = 13;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const tw = Math.atan2(dy, dx) + r * twist;
+      cols[idx] = (((0.5 + Math.cos(tw) * r) % 1) + 1) % 1 * size;
+      rows[idx] = (((0.5 + Math.sin(tw) * r) % 1) + 1) % 1 * size;
+    }
+  }
+  const sw = mapCoordsBilinear(swirl, size, size, rows, cols);
+  const out = new Float32Array(N);
+  const R = 0.34 * k;
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const ring = Math.exp(-Math.pow((r - (R + (n1[idx] - 0.5) * 0.05)) / 0.05, 2)) * 0.85;
+      const body = Math.pow(Math.max(0, sw[idx]), 1.35) * sstep(0.44 * k, 0.10, r);
+      const center = 1 - Math.exp(-r * r / 0.005);          // 黑心
+      out[idx] = Math.min(1, (body * 0.7 + ring) * center * (1 - sstep(0.44 * k, 0.49 * k, r)));
+    }
+  }
+  return out;
+}
+
+function generateGradient(size, octaves, seed, freqScale) {
+  // 線性 / 角度漸層（VFX 萬用遮罩底）：octaves<8 線性、>=8 角度；seed 控方向、縮放控對比
+  const rng = new RNG(seed); const rot = rng.rand() * Math.PI * 2;
+  const angular = octaves >= 8;
+  const gamma = Math.max(0.4, Math.min(2.6, freqScale));
+  const dxr = Math.cos(rot), dyr = Math.sin(rot);
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const v = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const u = i / size - 0.5;
+      let g;
+      if (angular) { g = (Math.atan2(v, u) + rot) / (Math.PI * 2); g = ((g % 1) + 1) % 1; }
+      else { g = (u * dxr + v * dyr) + 0.5; }
+      out[j * size + i] = Math.pow(Math.max(0, Math.min(1, g)), gamma);
+    }
+  }
+  return out;
+}
+
+function generateRipples(size, octaves, seed, freqScale) {
+  // 干涉水波：多點同心波相加（水面高度場，配冰/法線映射用）
+  const rng = new RNG(seed);
+  const C = Math.max(2, Math.min(6, Math.round(octaves * 0.45)));
+  const px = [], py = [], fr = [], ph = [], am = [];
+  for (let c = 0; c < C; c++) {
+    px.push(rng.rand()); py.push(rng.rand());
+    fr.push((18 + rng.rand() * 26) * Math.max(0.4, Math.min(2.2, freqScale)));
+    ph.push(rng.rand() * 6.283); am.push(0.6 + rng.rand() * 0.4);
+  }
+  const out = new Float32Array(size * size);
+  let lo = 9, hi = -9;
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      let h = 0;
+      for (let c = 0; c < C; c++) {
+        let dx = Math.abs(u - px[c]); if (dx > 0.5) dx = 1 - dx;   // wrap → 可平鋪
+        let dy = Math.abs(v - py[c]); if (dy > 0.5) dy = 1 - dy;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        h += Math.sin(d * fr[c] - ph[c]) * am[c] * Math.exp(-d * 1.6);   // 隨距離衰減
+      }
+      const idx = j * size + i; out[idx] = h;
+      if (h < lo) lo = h; if (h > hi) hi = h;
+    }
+  }
+  const rng2 = hi - lo + 1e-6;
+  for (let i = 0; i < out.length; i++) out[i] = (out[i] - lo) / rng2;   // 正規化成 0..1 高度
+  return out;
+}
+
+// ============================================================
 // VFX sprite generators — 斬擊 / 拖尾 / 光束 / 光暈 / 閃電 / 火焰 / 煙團 / 魔法陣
 // ============================================================
 function sstep(e0, e1, x) {
@@ -1370,6 +1689,93 @@ function generateTrail(size, octaves, seed, freqScale) {
       // 頭部光暈（拖尾起點的亮核）
       const head = Math.exp(-((u - 0.05) * (u - 0.05)) / 0.004 - ((v - 0.5) * (v - 0.5)) / 0.015) * 0.9;
       out[idx] = Math.min(1, (b * (0.55 + str[idx] * 0.6) + head) * sstep(0, 0.04, u));
+    }
+  }
+  return out;
+}
+
+function generateTaperRibbon(size, octaves, seed, freqScale) {
+  // 乾淨漸細緞帶：寬頭→尖尾、亮頭→淡尾、中軸亮脊（精緻 ribbon）
+  const wy = fbm(size, 4, 2, 2.0, 0.5, seed + 11, 1);       // 緩和波形
+  const tex = fbm(size, octaves, 3, 2.0, 0.5, seed, 1);     // 細微質感
+  const W0 = 0.17 * Math.max(0.4, Math.min(1.6, freqScale));
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      const idx = j * size + i;
+      const vv = v + (wy[idx] - 0.5) * 0.06;                // 極輕微擺動
+      const w = W0 * Math.pow(Math.max(0, 1 - u), 1.1) + 0.004;
+      const dv = (vv - 0.5) / w;
+      const band = Math.max(0, 1 - dv * dv);
+      const core = Math.exp(-dv * dv * 4);                  // 中軸亮脊
+      const grad = Math.pow(Math.max(0, 1 - u), 1.4);       // 頭亮尾淡
+      const head = Math.exp(-((u - 0.05) * (u - 0.05)) / 0.005 - ((v - 0.5) * (v - 0.5)) / 0.020) * 0.5;
+      out[idx] = Math.min(1, (Math.pow(band, 0.7) * 0.52 + core * 0.6) * grad * sstep(0, 0.02, u) * (0.82 + tex[idx] * 0.30) + head);
+    }
+  }
+  return out;
+}
+
+function generateCometTrail(size, octaves, seed, freqScale) {
+  // 圓亮頭 + 單錐長尾 + 沿軌跡纖維（投射物拖尾）
+  const N = size * size;
+  const wy = fbm(size, 5, 3, 2.0, 0.5, seed + 11, 1);
+  const tex = fbm(size, octaves, 4, 2.0, 0.5, seed, 1);
+  const fsrc = fbm(size, Math.max(5, octaves), 7, 2.0, 0.5, seed + 31, 1);
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j * size + i;
+    cols[idx] = (i * 0.20 + (wy[idx] - 0.5) * 18) % size;   // 沿尾方向纖維
+    rows[idx] = (j + size) % size;
+  }
+  const fiber = mapCoordsBilinear(fsrc, size, size, rows, cols);
+  const headX = 0.13, decay = 1.7 / Math.max(0.5, Math.min(1.6, freqScale));
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      const idx = j * size + i;
+      const vv = v + (wy[idx] - 0.5) * 0.10;
+      const head = Math.exp(-((u - headX) * (u - headX)) / 0.0032 - ((v - 0.5) * (v - 0.5)) / 0.0075);
+      const w = 0.10 * Math.pow(Math.max(0, 1 - u), 1.25) + 0.006;
+      const tailB = Math.pow(Math.max(0, 1 - Math.max(0, u - headX + 0.03)), decay);
+      const fib = 0.5 + Math.pow(Math.max(0, fiber[idx] - 0.4) / 0.6, 1.4) * 0.9;
+      const tail = Math.exp(-Math.pow((vv - 0.5) / w, 2)) * tailB * (0.5 + tex[idx] * 0.7) * fib * sstep(0.03, 0.1, u);
+      out[idx] = Math.min(1, head + tail);
+    }
+  }
+  return out;
+}
+
+function generateSwirlTrail(size, octaves, seed, freqScale) {
+  // 兩股交纏螺旋緞帶（鑽擊 / 螺旋彈）
+  const tex = fbm(size, octaves, 5, 2.0, 0.5, seed, 1);
+  const wy = fbm(size, 4, 2, 2.0, 0.5, seed + 13, 1);
+  const rng = new RNG((seed * 2654435761) >>> 0 || 1); rng.next();
+  const p0 = rng.rand() * 6.28;
+  const turns = 10 + Math.max(0, octaves - 6) * 2;          // octaves 控圈數
+  const ampS = 0.16 * Math.max(0.5, Math.min(1.5, freqScale));
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      const idx = j * size + i;
+      const vv = v + (wy[idx] - 0.5) * 0.05;
+      const amp = ampS * Math.pow(Math.max(0, 1 - u), 0.9);
+      let b = 0;
+      for (let k = 0; k < 2; k++) {
+        const ph = u * turns + k * Math.PI + p0;
+        const yc = 0.5 + Math.sin(ph) * amp;
+        const w = 0.030 * Math.pow(Math.max(0, 1 - u), 0.6) + 0.005;
+        const depth = 0.55 + 0.45 * Math.cos(ph);          // 前亮後暗 → 立體螺旋
+        b += Math.exp(-Math.pow((vv - yc) / w, 2)) * Math.pow(Math.max(0, 1 - u), 1.2) * depth;
+      }
+      const head = Math.exp(-((u - 0.06) * (u - 0.06)) / 0.004 - ((v - 0.5) * (v - 0.5)) / 0.012) * 0.8;
+      out[idx] = Math.min(1, b * (0.6 + tex[idx] * 0.7) * sstep(0, 0.025, u) + head);
     }
   }
   return out;
@@ -1631,22 +2037,35 @@ function generateFlame(size, octaves, seed, freqScale) {
 }
 
 function generatePuff(size, octaves, seed, freqScale) {
-  const n1 = fbm(size, octaves, 3, 2.0, 0.55, seed, freqScale);                 // 內部雲絮
-  const n2 = fbm(size, Math.max(4, octaves - 2), 7, 2.0, 0.5, seed + 9, freqScale); // 細邊噪
-  const n3 = fbm(size, 4, 2, 2.0, 0.5, seed + 21, 1);                           // 大尺度瓣
-  const out = new Float32Array(size * size);
+  // 花椰菜團塊煙球：大尺度瓣同時決定輪廓凹凸與內部明暗 + 朝光源密度梯度偽光照
+  const lobe = fbm(size, 5, 3, 2.0, 0.55, seed + 21, freqScale);              // 大尺度團塊瓣
+  const fine = fbm(size, octaves, 8, 2.0, 0.5, seed, freqScale);              // 細雲絮
+  const ero  = fbm(size, Math.max(4, octaves - 2), 11, 2.0, 0.5, seed + 9, freqScale); // 邊緣侵蝕
+  const N = size * size;
+  const dens = new Float32Array(N);                                            // 合成密度場
+  for (let idx = 0; idx < N; idx++) dens[idx] = lobe[idx] * 0.68 + fine[idx] * 0.32;
+  const out = new Float32Array(N);
+  const lx = -0.45, ly = -0.89;                                                // 光源左上
+  const sx = Math.max(1, Math.round(size * 0.020) * Math.sign(lx));
+  const sy = Math.max(1, Math.round(size * 0.020)) * (ly < 0 ? -1 : 1);
   for (let j = 0; j < size; j++) {
     const dy = j / size - 0.5;
+    const lj = Math.max(0, Math.min(size - 1, j + sy));
     for (let i = 0; i < size; i++) {
       const dx = i / size - 0.5;
       const idx = j * size + i;
       const r = Math.sqrt(dx * dx + dy * dy);
-      // 雙尺度邊緣：大瓣形狀 + 細碎侵蝕
-      const edge = 0.34 + (n3[idx] - 0.5) * 0.30 + (n2[idx] - 0.5) * 0.10;
-      const body = 1 - sstep(edge - 0.20, edge + 0.05, r);
-      // 內部雲絮明暗 + 中心微亮（光照感）
-      const shade = 0.42 + n1[idx] * 0.52 + Math.exp(-r * r / 0.02) * 0.18;
-      out[idx] = Math.max(0, Math.min(1, body * shade));
+      // 覆蓋度：大瓣密度 − 徑向截斷 − 細碎侵蝕 → 凹凸輪廓
+      const coverage = dens[idx] - sstep(0.16, 0.50, r) * 1.0 - (ero[idx] - 0.5) * 0.18;
+      const body = sstep(-0.01, 0.13, coverage);
+      if (body <= 0.001) { out[idx] = 0; continue; }
+      // 朝光源密度梯度 → 瓣頂受光、瓣間暗縫
+      const li = Math.max(0, Math.min(size - 1, i + sx));
+      const light = Math.max(0.18, Math.min(1.4, 0.5 + (dens[idx] - dens[lj * size + li]) * 3.0));
+      // 輪廓受光環（上緣最亮）
+      const rim = sstep(0.13, 0.02, coverage) * (0.35 + 0.65 * Math.max(0, -dy / (r + 0.02)));
+      const shade = light * 0.70 + dens[idx] * 0.30;
+      out[idx] = Math.max(0, Math.min(1, body * shade + rim * 0.45 * body));
     }
   }
   return out;
@@ -1765,26 +2184,40 @@ function generateMagicCircle(size, octaves, seed, freqScale) {
 // Smoke sprites — 煙柱 / 縷煙 / 煙圈
 // ============================================================
 function generatePlume(size, octaves, seed, freqScale) {
-  const n1 = fbm(size, octaves, 3, 2.0, 0.55, seed, freqScale);                 // 內部紋理
-  const n2 = fbm(size, Math.max(4, octaves - 2), 6, 2.0, 0.5, seed + 7, freqScale); // 侵蝕
-  const mid = size >> 1;
-  const out = new Float32Array(size * size);
+  // 上升煙柱：大尺度團塊密度 + 朝光源密度梯度偽光照（翻騰立體感）
+  const lobe = fbm(size, 5, 4, 2.0, 0.55, seed, freqScale);                    // 翻騰團塊
+  const fine = fbm(size, octaves, 9, 2.0, 0.5, seed + 3, freqScale);           // 細紋
+  const ero  = fbm(size, Math.max(4, octaves - 2), 7, 2.0, 0.5, seed + 7, freqScale); // 侵蝕
+  const N = size * size, mid = size >> 1;
+  const dens = new Float32Array(N);
+  for (let idx = 0; idx < N; idx++) dens[idx] = lobe[idx] * 0.62 + fine[idx] * 0.38;
+  const out = new Float32Array(N);
+  const sx = Math.max(1, Math.round(size * 0.018));
+  const sy = -Math.max(1, Math.round(size * 0.018));                           // 光源左上
   for (let j = 0; j < size; j++) {
     const v = j / size;
     const t = 1 - v;                                       // 0=底部 1=頂部
-    const sway = (n1[j * size + mid] - 0.5) * 0.28 * t;    // 煙柱隨高度搖擺
+    const sway = (lobe[j * size + mid] - 0.5) * 0.28 * t;
     const axis = 0.5 + sway;
-    const w = 0.055 + t * 0.21;                            // 越高越散開
-    const fadeTop = 1 - sstep(0.55, 0.97, t) * 0.85;       // 頂部漸散
+    const w = 0.055 + t * 0.21;
+    const fadeTop = 1 - sstep(0.55, 0.97, t) * 0.85;
     const fadeBot = sstep(0.0, 0.05, t);
+    const lj = Math.max(0, Math.min(size - 1, j + sy));
     for (let i = 0; i < size; i++) {
       const u = i / size;
       const idx = j * size + i;
       const dx = (u - axis) / w;
-      const core = Math.max(0, 1 - dx * dx);
-      const erosion = n2[idx] * (0.30 + t * 0.85);         // 越高侵蝕越強 → 散逸
-      let s = core * (0.75 + (n1[idx] - 0.5) * 0.6) - erosion * 0.55;
-      out[idx] = Math.max(0, Math.min(1, s)) * fadeTop * fadeBot;
+      const core = Math.max(0, 1 - dx * dx);                // 柱身包絡
+      const erosion = ero[idx] * (0.30 + t * 0.85);
+      const body = Math.max(0, core * (0.85 + (dens[idx] - 0.5) * 0.7) - erosion * 0.6);
+      if (body <= 0.001) { out[idx] = 0; continue; }
+      // 朝光源密度梯度 → 翻騰瓣受光/背光
+      const li = Math.max(0, Math.min(size - 1, i + sx));
+      const light = Math.max(0.25, Math.min(1.5, 0.55 + (dens[idx] - dens[lj * size + li]) * 3.0));
+      // 側緣受光（柱身左緣較亮）
+      const rim = Math.exp(-Math.pow((Math.abs(dx) - 0.82) / 0.28, 2)) * (0.3 + 0.5 * Math.max(0, -(u - axis) / (w + 0.001)));
+      const shade = light * 0.92 + dens[idx] * 0.32;
+      out[idx] = Math.max(0, Math.min(1, body * shade + rim * 0.35 * Math.min(1, body * 3))) * fadeTop * fadeBot;
     }
   }
   return out;
@@ -2242,6 +2675,122 @@ function generateHalo(size, octaves, seed, freqScale) {
 }
 
 // ============================================================
+// Glow sprites v3 — 衝擊閃光 / 能量球 / 星雲 / 微光星場
+// ============================================================
+function generateImpactFlash(size, octaves, seed, freqScale) {
+  // 亮核 + 不規則隨機放射芒（命中爆閃）
+  const k = 1 / Math.max(0.25, freqScale), k2 = k * k;
+  const rng = new RNG((seed * 2654435761) >>> 0 || 1); rng.next();
+  const C = Math.max(8, Math.min(20, octaves + 6));
+  const ka = [], len = [], sharp = [], br = [];
+  for (let c = 0; c < C; c++) { ka.push(rng.rand() * 6.283); len.push((0.12 + rng.rand() * 0.30) * k); sharp.push(14 + rng.rand() * 30); br.push(0.5 + rng.rand() * 0.5); }
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const r2 = dx * dx + dy * dy, r = Math.sqrt(r2);
+      const a = Math.atan2(dy, dx);
+      let ray = 0;
+      for (let c = 0; c < C; c++) {
+        let da = a - ka[c]; da = Math.atan2(Math.sin(da), Math.cos(da));
+        const ca = Math.cos(da);
+        if (ca <= 0) continue;
+        ray = Math.max(ray, Math.pow(ca, sharp[c]) * Math.exp(-r / len[c]) * br[c]);
+      }
+      const core = Math.exp(-r2 / (0.0035 * k2)) + Math.exp(-r2 / (0.025 * k2)) * 0.4;
+      out[j * size + i] = Math.min(1, core + ray * 0.9);
+    }
+  }
+  return out;
+}
+
+function generateEnergyOrb(size, octaves, seed, freqScale) {
+  // 湍流電漿核：域扭曲噪波關在柔球內 + 亮核
+  const k = Math.max(0.5, Math.min(1.4, freqScale));
+  const N = size * size;
+  const wx = fbm(size, 5, 3, 2.0, 0.5, seed + 5, 1);
+  const wy = fbm(size, 5, 3, 2.0, 0.5, seed + 9, 1);
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j * size + i;
+    cols[idx] = (((i / size + (wx[idx] - 0.5) * 0.20) % 1) + 1) % 1 * size;
+    rows[idx] = (((j / size + (wy[idx] - 0.5) * 0.20) % 1) + 1) % 1 * size;
+  }
+  const turb = mapCoordsBilinear(fbm(size, octaves, 5, 2.0, 0.55, seed, 1), size, size, rows, cols);
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r2 = dx * dx + dy * dy, r = Math.sqrt(r2);
+      const orb = Math.pow(0.35 + turb[idx] * 0.95, 1.4) * sstep(0.42 * k, 0.05, r);
+      const core = Math.exp(-r2 / (0.004 * k * k)) * 0.9 + Math.exp(-r2 / (0.03 * k * k)) * 0.3;
+      out[idx] = Math.min(1, orb * 0.78 + core);
+    }
+  }
+  return out;
+}
+
+function generateNebula(size, octaves, seed, freqScale) {
+  // 柔亮縷狀雲氣：強域扭曲 + 柔邊遮罩（星雲/靈氣氛圍）
+  const k = Math.max(0.5, Math.min(1.4, freqScale));
+  const N = size * size;
+  const wx = fbm(size, 5, 2, 2.0, 0.5, seed + 5, 1);
+  const wy = fbm(size, 5, 2, 2.0, 0.5, seed + 9, 1);
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j * size + i;
+    cols[idx] = (((i / size + (wx[idx] - 0.5) * 0.36) % 1) + 1) % 1 * size;
+    rows[idx] = (((j / size + (wy[idx] - 0.5) * 0.36) % 1) + 1) % 1 * size;
+  }
+  const n = mapCoordsBilinear(fbm(size, octaves, 3, 2.0, 0.55, seed, 1), size, size, rows, cols);
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r2 = dx * dx + dy * dy, r = Math.sqrt(r2);
+      const wisp = Math.pow(Math.max(0, n[idx] - 0.28) / 0.72, 1.4);
+      const glow = Math.exp(-r2 / (0.06 * k * k)) * 0.22;
+      out[idx] = Math.min(1, wisp * sstep(0.48 * k, 0.04, r) * 1.05 + glow);
+    }
+  }
+  return out;
+}
+
+function generateShimmer(size, octaves, seed, freqScale) {
+  // 稀疏十字閃爍場（可平鋪）：寶石/星塵
+  const C = Math.max(10, Math.round(20 * Math.max(0.5, Math.min(2, freqScale))));
+  const rng = new RNG(seed + 7);
+  const px = new Float32Array(C), py = new Float32Array(C), sz = new Float32Array(C), br = new Float32Array(C);
+  for (let c = 0; c < C; c++) { px[c] = rng.rand(); py[c] = rng.rand(); sz[c] = 0.0005 + rng.rand() * 0.0018; br[c] = 0.5 + rng.rand() * 0.5; }
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      let b = 0;
+      for (let c = 0; c < C; c++) {
+        let dx = Math.abs(u - px[c]); if (dx > 0.5) dx = 1 - dx;   // wrap → 可平鋪
+        let dy = Math.abs(v - py[c]); if (dy > 0.5) dy = 1 - dy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 > sz[c] * 50) continue;
+        const core = Math.exp(-d2 / sz[c]);
+        const fl = br[c] > 0.7
+          ? (Math.exp(-(dx * dx) / (sz[c] * 8) - (dy * dy) / (sz[c] * 0.05)) + Math.exp(-(dy * dy) / (sz[c] * 8) - (dx * dx) / (sz[c] * 0.05))) * 0.35
+          : 0;
+        b += (core + fl) * br[c];
+      }
+      out[j * size + i] = Math.min(1, b);
+    }
+  }
+  return out;
+}
+
+// ============================================================
 // Generator map
 // ============================================================
 const GENERATORS = {
@@ -2270,6 +2819,17 @@ const GENERATORS = {
   hex:       generateHex,
   sparkle:   generateSparkle,
   grain:     generateGrain,
+  halftone:  generateHalftone,
+  truchet:   generateTruchet,
+  gradient:  generateGradient,
+  ripples:   generateRipples,
+  snowflake: generateSnowflake,
+  spiderweb: generateSpiderweb,
+  embers:    generateEmbers,
+  portal:    generatePortal,
+  taperribbon:generateTaperRibbon,
+  comet:      generateCometTrail,
+  swirltrail: generateSwirlTrail,
   smoketrail: generateSmokeTrail,
   impactring: generateImpactRing,
   crystal:    generateCrystalBurst,
@@ -2289,6 +2849,10 @@ const GENERATORS = {
   starglow:  generateStarGlow,
   anamorph:  generateAnamorph,
   ringglow:  generateRingGlow,
+  impactflash:generateImpactFlash,
+  energyorb: generateEnergyOrb,
+  nebula:    generateNebula,
+  shimmer:   generateShimmer,
   sunburst:  generateSunburst,
   lenschain: generateLensChain,
   glint:     generateGlint,
@@ -2299,8 +2863,55 @@ const GENERATORS = {
 // ============================================================
 // Color maps + post-processing
 // ============================================================
+// VFX 漸層映射表（gradient mapping）：[位置, R, G, B]
+const VFX_RAMPS = {
+  fire:     [[0,0,0,0],[0.30,120,12,0],[0.55,232,70,4],[0.78,255,200,46],[1,255,255,225]],
+  ice:      [[0,2,4,12],[0.40,12,44,120],[0.70,42,162,224],[0.88,150,224,250],[1,235,250,255]],
+  electric: [[0,2,0,8],[0.40,62,12,122],[0.70,84,92,255],[0.90,156,202,255],[1,255,255,255]],
+  toxic:    [[0,0,6,0],[0.40,22,82,12],[0.70,82,202,32],[0.88,170,240,70],[1,224,255,150]],
+  magma:    [[0,0,0,0],[0.25,62,0,32],[0.50,182,22,10],[0.75,255,92,0],[1,255,232,124]],
+};
+function rampLookup(ramp, g) {
+  g = g < 0 ? 0 : g > 1 ? 1 : g;
+  for (let s = 1; s < ramp.length; s++) {
+    if (g <= ramp[s][0]) {
+      const a = ramp[s - 1], b = ramp[s];
+      const t = (g - a[0]) / (b[0] - a[0] + 1e-6);
+      return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+    }
+  }
+  const last = ramp[ramp.length - 1]; return [last[1], last[2], last[3]];
+}
+
 function applyColormap(arr, colormap) {
   const N = arr.length, out = new Uint8ClampedArray(N*4);
+  if (colormap === 'normal') {
+    // 灰階當高度場 → 切線空間法線貼圖（Sobel 梯度，無縫 wrap）
+    const size = Math.round(Math.sqrt(N)), str = 3.0;
+    for (let j = 0; j < size; j++) {
+      const jm = ((j - 1 + size) % size) * size, jp = ((j + 1) % size) * size, jr = j * size;
+      for (let i = 0; i < size; i++) {
+        const il = (i - 1 + size) % size, ip = (i + 1) % size;
+        const dx = (arr[jr + il] - arr[jr + ip]) * str;
+        const dy = (arr[jp + i] - arr[jm + i]) * str;     // G+ = 上方較高（OpenGL 慣例）
+        const inv = 1 / Math.sqrt(dx * dx + dy * dy + 1);
+        const o = (jr + i) * 4;
+        out[o]   = Math.round((dx * inv * 0.5 + 0.5) * 255);
+        out[o+1] = Math.round((dy * inv * 0.5 + 0.5) * 255);
+        out[o+2] = Math.round((inv * 0.5 + 0.5) * 255);
+        out[o+3] = 255;
+      }
+    }
+    return out;
+  }
+  if (VFX_RAMPS[colormap]) {
+    const ramp = VFX_RAMPS[colormap];
+    for (let i = 0; i < N; i++) {
+      const c = rampLookup(ramp, arr[i]);
+      out[i*4] = c[0]; out[i*4+1] = c[1]; out[i*4+2] = c[2]; out[i*4+3] = 255;
+    }
+    return out;
+  }
   if (colormap === 'gold') {
     for (let i = 0; i < N; i++) {
       const g = arr[i];
@@ -2361,6 +2972,11 @@ function applyLayers(arr, size, p) {
         case 'add':    v = Math.min(1, a + bb); break;
         case 'max':    v = Math.max(a, bb); break;
         case 'screen': v = 1 - (1 - a) * (1 - bb); break;
+        case 'min':    v = Math.min(a, bb); break;
+        case 'diff':   v = Math.abs(a - bb); break;
+        case 'sub':    v = Math.max(0, a - bb); break;
+        case 'overlay':v = a < 0.5 ? 2 * a * bb : 1 - 2 * (1 - a) * (1 - bb); break;
+        case 'soft':   v = (1 - 2 * bb) * a * a + 2 * bb * a; break;   // pegtop 柔光
         default:       v = a * bb;
       }
       out[i] = a * (1 - m) + v * m;
@@ -2527,6 +3143,17 @@ const TYPE_LABELS = [
   ['hex',       '⬡ Hex         六角護盾'],
   ['sparkle',   '⭐ Sparkle     星點閃爍'],
   ['grain',     '🎞 Grain       細顆粒'],
+  ['halftone',  '⚫ Halftone    網點漸層'],
+  ['truchet',   '🔀 Truchet     迷宮電路'],
+  ['gradient',  '📐 Gradient    線性/角度漸層'],
+  ['ripples',   '🌊 Ripples     干涉水波'],
+  ['snowflake', '❄ Snowflake  雪花冰晶'],
+  ['spiderweb', '🕸 Spiderweb 蛛網'],
+  ['embers',    '🔥 Embers      餘燼火星'],
+  ['portal',    '🌀 Portal      傳送漩渦'],
+  ['taperribbon','🎗 TaperRibbon 漸細緞帶'],
+  ['comet',     '☄ CometTrail  彗星拖尾'],
+  ['swirltrail','🌀 SwirlTrail 螺旋拖尾'],
   ['smoketrail','🌬 SmokeTrail 橫煙拖尾'],
   ['impactring','💥 ImpactRing 衝擊光環'],
   ['crystal',   '❄ CrystalBurst 水晶爆裂'],
@@ -2551,6 +3178,10 @@ const TYPE_LABELS = [
   ['glint',     '✧ Glint        銳利閃點'],
   ['godrays',   '🌤 GodRays    體積光柱'],
   ['halo',      '🌕 Halo        月暈'],
+  ['impactflash','✸ ImpactFlash 衝擊閃光'],
+  ['energyorb', '🔮 EnergyOrb  能量球'],
+  ['nebula',    '🌌 Nebula      星雲輝光'],
+  ['shimmer',   '✨ Shimmer    微光星場'],
 ];
 
 let currentType = 'cloud';
@@ -2655,10 +3286,11 @@ function applyPreset(id) {
 
 function buildPresets() {
   const grid = document.getElementById('preset-grid');
+  grid.innerHTML = '';
   PRESETS.forEach(ps => {
     const btn = document.createElement('button');
     btn.className = 'preset-btn';
-    btn.textContent = ps.label;
+    btn.textContent = presetLabel(ps);
     btn.addEventListener('click', () => applyPreset(ps.id));
     grid.appendChild(btn);
   });
@@ -2709,10 +3341,10 @@ const TYPE_GROUPS = [
   { label: '梯度 / 特效', keys: ['perlin','marble','energy','curl','electric'] },
   { label: '扭曲 / 流場', keys: ['warp','distort','flowmap'] },
   { label: '極座標 Sprite', keys: ['shockwave','voidring','streaks','vortex'] },
-  { label: '圖案 / 顆粒', keys: ['hex','sparkle','grain'] },
-  { label: '打擊 / 魔法', keys: ['slash','trail','beam','bolt','ringbolt','flame','magic','impactring','crystal','groundcrack'] },
-  { label: '煙霧 Sprite', keys: ['puff','plume','wisps','smokering','smoketrail'] },
-  { label: '光暈 Sprite', keys: ['glow','starglow','anamorph','ringglow','sunburst','lenschain','glint','godrays','halo'] },
+  { label: '圖案 / 顆粒', keys: ['hex','sparkle','grain','halftone','truchet','gradient','ripples'] },
+  { label: '打擊 / 魔法', keys: ['slash','trail','taperribbon','comet','swirltrail','beam','bolt','ringbolt','flame','magic','impactring','crystal','groundcrack','snowflake','spiderweb','portal'] },
+  { label: '煙霧 Sprite', keys: ['puff','plume','wisps','smokering','smoketrail','embers'] },
+  { label: '光暈 Sprite', keys: ['glow','starglow','anamorph','ringglow','sunburst','lenschain','glint','godrays','halo','impactflash','energyorb','nebula','shimmer'] },
 ];
 const TYPE_MAP = Object.fromEntries(TYPE_LABELS);
 
@@ -2735,13 +3367,29 @@ function tabOfType(key) {
   return 0;
 }
 
+function buildCmapRadios() {
+  const cr = document.getElementById('cmap-row');
+  const cur = document.querySelector('input[name=cmap]:checked')?.value || 'gray';
+  cr.innerHTML = '';
+  [['gray','cm_gray'],['gold','cm_gold'],['plasma','cm_plasma'],['fire','cm_fire'],['ice','cm_ice'],
+   ['electric','cm_electric'],['toxic','cm_toxic'],['magma','cm_magma'],['normal','cm_normal']].forEach(([v, k]) => {
+    const lbl = document.createElement('label');
+    const r = document.createElement('input');
+    r.type='radio'; r.name='cmap'; r.value=v;
+    if (v===cur) r.checked=true;
+    r.addEventListener('change', schedulePreview);
+    lbl.appendChild(r); lbl.append(' ' + t(k));
+    cr.appendChild(lbl);
+  });
+}
+
 function buildTypeTabs() {
   const bar = document.getElementById('type-tabs');
   bar.innerHTML = '';
-  TYPE_TABS.forEach((t, i) => {
+  TYPE_TABS.forEach((tab, i) => {
     const b = document.createElement('button');
     b.className = 'type-tab' + (i === activeTab ? ' active' : '');
-    b.textContent = t.label;
+    b.textContent = t(TAB_I18N[tab.label]) || tab.label;
     b.addEventListener('click', () => {
       activeTab = i;
       buildTypeTabs();
@@ -2760,11 +3408,11 @@ function buildTypeList() {
     if (groups.length > 1) {                       // 單一群組的分頁不顯示小標
       const hdr = document.createElement('li');
       hdr.className = 'type-group-lbl';
-      hdr.textContent = group.label;
+      hdr.textContent = t(GROUP_I18N[group.label]) || group.label;
       ul.appendChild(hdr);
     }
     group.keys.forEach(key => {
-      const label = TYPE_MAP[key] || key;
+      const label = typeLabelDisp(TYPE_MAP[key] || key);
       const li = document.createElement('li');
       li.textContent = label; li.dataset.key = key;
       if (key === currentType) li.classList.add('sel');
@@ -2796,16 +3444,7 @@ function buildUI() {
   });
 
   // Colormap radios
-  const cr = document.getElementById('cmap-row');
-  [['gray','灰階'],['gold','金色'],['plasma','Plasma']].forEach(([v, l]) => {
-    const lbl = document.createElement('label');
-    const r = document.createElement('input');
-    r.type='radio'; r.name='cmap'; r.value=v;
-    if (v==='gray') r.checked=true;
-    r.addEventListener('change', schedulePreview);
-    lbl.appendChild(r); lbl.append(' '+l);
-    cr.appendChild(lbl);
-  });
+  buildCmapRadios();
 
   // Stretch radios
   document.querySelectorAll('input[name=stretch]').forEach(r => r.addEventListener('change', schedulePreview));
@@ -2815,7 +3454,7 @@ function buildUI() {
   TYPE_LABELS.forEach(([key, label]) => {
     if (key === 'flowmap') return;
     const opt = document.createElement('option');
-    opt.value = key; opt.textContent = label.replace(/\s+/g, ' ');
+    opt.value = key; opt.textContent = typeLabelDisp(label).replace(/\s+/g, ' ');
     bt.appendChild(opt);
   });
   bt.value = 'cloud';
@@ -2837,7 +3476,7 @@ function buildUI() {
     TYPE_LABELS.forEach(([key, label]) => {
       if (key === 'flowmap') return;
       const opt = document.createElement('option');
-      opt.value = key; opt.textContent = label.replace(/\s+/g, ' ');
+      opt.value = key; opt.textContent = typeLabelDisp(label).replace(/\s+/g, ' ');
       sel.appendChild(opt);
     });
     sel.addEventListener('change', renderPackPreview);
@@ -3716,7 +4355,7 @@ function buildPreviewTabs() {
     if (isFlow && (d.id === 'tile' || d.id === 'dissolve' || d.id === 'scroll')) return;
     const b = document.createElement('button');
     b.className = 'type-tab' + (previewTab === d.id ? ' active' : '');
-    b.textContent = d.label;
+    b.textContent = t(PVTAB_I18N[d.id]) || d.label;
     b.addEventListener('click', () => { previewTab = d.id; applyPreviewTab(); });
     bar.appendChild(b);
   });
@@ -3770,6 +4409,7 @@ function applyPreviewTab() {
 // Init
 // ============================================================
 buildUI();
+applyI18n();
 applyParamsFromURL();
 initThumbFolds();
 applyPreviewTab();
