@@ -1916,6 +1916,197 @@ function generateRingGlow(size, octaves, seed, freqScale) {
 }
 
 // ============================================================
+// VFX library sprites — 橫煙 / 衝擊環 / 水晶爆裂 / 地裂
+// （取材自商業遊戲特效貼圖庫，純程序重建）
+// ============================================================
+function generateSmokeTrail(size, octaves, seed, freqScale) {
+  // 水平拉伸軟煙拖尾：多股纖維煙絲，左濃右散
+  const N = size * size;
+  const wx = fbm(size, 5, 3, 2.0, 0.5, seed + 11, 1);
+  const wy = fbm(size, 5, 4, 2.0, 0.5, seed + 23, 1);
+  const body = fbm(size, octaves, 3, 2.0, 0.55, seed, 1);
+  // 沿軌跡方向的纖維（x 壓縮取樣 → 水平流向細紋）
+  const fsrc = fbm(size, Math.max(5, octaves), 7, 2.0, 0.5, seed + 41, 1);
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) {
+    const idx = j * size + i;
+    cols[idx] = (i * 0.22 + (wx[idx] - 0.5) * 20) % size;
+    rows[idx] = (j + (wy[idx] - 0.5) * 26 + size) % size;
+  }
+  const fiber = mapCoordsBilinear(fsrc, size, size, rows, cols);
+  const rng = new RNG(seed + 7);
+  const S = Math.max(2, Math.min(4, Math.round(octaves * 0.45)));
+  const yc = [], amp = [], thk = [], hd = [];
+  for (let k = 0; k < S; k++) {
+    yc.push(0.46 + (rng.rand() - 0.5) * 0.34);
+    amp.push(0.7 + rng.rand() * 0.3);
+    thk.push(0.028 + rng.rand() * 0.030);                  // 更細的股
+    hd.push(0.04 + rng.rand() * 0.10);                     // 各股的鋒利頭位置
+  }
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const v = j / size;
+    for (let i = 0; i < size; i++) {
+      const u = i / size;
+      const idx = j * size + i;
+      const uu = u + (wx[idx] - 0.5) * 0.08;
+      const vv = v + (wy[idx] - 0.5) * 0.13;
+      let b = 0, flick = 0;
+      for (let k = 0; k < S; k++) {
+        const w = thk[k] * (0.4 + Math.max(0, uu - hd[k]) * 2.4);   // 從頭往右漸寬
+        if (uu < hd[k] - 0.02) continue;                   // 頭部左側裁掉 → 鋒利尖端
+        const band = Math.exp(-Math.pow((vv - yc[k]) / w, 2));
+        b += band * amp[k];
+        flick += band * Math.exp(-Math.pow((uu - hd[k]) / 0.05, 2)) * amp[k];  // 頭部亮點
+      }
+      // 纖維脊線：沿軌跡的細亮絲
+      const ridge = Math.pow(1 - Math.abs(fiber[idx] * 2 - 1), 3.2);
+      const tex = (0.30 + body[idx] * 0.55) * (0.55 + ridge * 0.95);
+      const erode = Math.pow(body[idx], 1.3) * sstep(0.4, 1.0, uu) * 0.9;   // 右側破碎
+      out[idx] = Math.max(0, Math.min(1, b * tex - erode + flick * 0.5));
+    }
+  }
+  return normalize(out);
+}
+
+function generateImpactRing(size, octaves, seed, freqScale) {
+  // 柔邊衝擊環 + 內緣放射條（命中衝擊 additive sprite）
+  const R = 0.34 * Math.max(0.5, Math.min(1.35, freqScale));
+  const N = size * size;
+  const angMod = fbm(size, 4, 2, 2.0, 0.5, seed + 5, 1);    // 環上明暗不均
+  // 放射條：角度高頻、半徑低頻 → 指向圓心的細條
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const an = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
+      cols[idx] = (an * size * 4) % size;
+      rows[idx] = Math.sqrt(dx * dx + dy * dy) * size * 0.6;
+    }
+  }
+  const spokeSrc = mapCoordsBilinear(fbm(size, Math.max(5, octaves), 6, 2.0, 0.5, seed + 31, 1), size, size, rows, cols);
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const ring = Math.exp(-Math.pow((r - R) / (0.052 * Math.max(0.6, freqScale)), 2)) * (0.5 + angMod[idx] * 0.35);
+      // 內緣放射條：在環內側、朝圓心淡出
+      const spoke = Math.pow(Math.max(0, spokeSrc[idx] - 0.42) / 0.58, 1.8)
+                  * sstep(R - 0.17, R - 0.02, r) * (1 - sstep(R - 0.01, R + 0.02, r));
+      out[idx] = Math.min(1, ring + spoke * 0.9);
+    }
+  }
+  return out;
+}
+
+function generateCrystalBurst(size, octaves, seed, freqScale) {
+  // 強亮核 + 尖銳冰晶碎片放射 + 細環（冰爆 sprite）
+  const rng = new RNG((seed * 2654435761) >>> 0 || 1);
+  rng.next(); rng.next();
+  const k = Math.max(0.5, Math.min(1.4, freqScale));
+  const C = Math.max(7, Math.min(16, octaves + 4));         // 碎片數
+  const shards = [];
+  for (let s = 0; s < C; s++) {
+    shards.push({
+      a: rng.rand() * Math.PI * 2,
+      len: (0.18 + rng.rand() * 0.26) * k,
+      hw: 0.05 + rng.rand() * 0.06,                         // 基部半角寬
+      b: 0.6 + rng.rand() * 0.4,
+    });
+  }
+  const ringR = 0.30 * k;
+  const out = new Float32Array(size * size);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const a = Math.atan2(dy, dx);
+      let shard = 0;
+      for (let s = 0; s < shards.length; s++) {
+        const sh = shards[s];
+        let da = a - sh.a; da = Math.atan2(Math.sin(da), Math.cos(da));   // wrap ±π
+        const along = r / sh.len;
+        if (along >= 1) continue;
+        const halfW = (1 - along) * sh.hw;                  // 尖端收窄
+        if (Math.abs(da) > halfW) continue;
+        const edge = 1 - Math.abs(da) / halfW;              // 0=邊 1=中軸
+        // faceted：硬邊 + 中軸亮脊 + 邊緣亮線（晶面感）
+        const facet = sstep(0, 0.12, edge) * (0.45 + Math.pow(edge, 3) * 0.55) + Math.exp(-Math.pow((edge - 0.85) / 0.10, 2)) * 0.3;
+        shard = Math.max(shard, facet * sh.b * (0.5 + (1 - along) * 0.6));
+      }
+      const core = Math.exp(-r * r / (0.0022 * k * k)) * 1.0 + Math.exp(-r * r / (0.02 * k * k)) * 0.35;
+      const ring = Math.exp(-Math.pow((r - ringR) / 0.018, 2)) * 0.28;
+      out[idx] = Math.min(1, shard * 0.95 + core + ring);
+    }
+  }
+  return out;
+}
+
+function generateGroundCrack(size, octaves, seed, freqScale) {
+  // 圓盤狀放射裂痕：中心碎裂多邊形 + 邊緣放射尖刺（落地衝擊貼花）
+  const R = 0.40 * Math.max(0.55, Math.min(1.25, freqScale));
+  const C = Math.max(14, Math.round((octaves * 3 + 10) * Math.max(0.6, freqScale)));
+  const rng = new RNG((seed * 40503) >>> 0 || 1);
+  rng.next();
+  // 裂縫格點（極座標分布 → 中心密外圈疏，貼近爆裂裂痕）
+  const px = new Float32Array(C), py = new Float32Array(C);
+  for (let c = 0; c < C; c++) {
+    const rr = Math.pow(rng.rand(), 0.7) * R * 1.05;        // 偏中心
+    const aa = rng.rand() * Math.PI * 2;
+    px[c] = 0.5 + Math.cos(aa) * rr;
+    py[c] = 0.5 + Math.sin(aa) * rr;
+  }
+  // 邊緣放射尖刺的角度噪波
+  const spikeN = fbm(size, 4, 3, 2.0, 0.5, seed + 19, 1);
+  const N = size * size;
+  const rows = new Float32Array(N), cols = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const dy = j / size - 0.5;
+    for (let i = 0; i < size; i++) {
+      const dx = i / size - 0.5;
+      const idx = j * size + i;
+      const an = Math.atan2(dy, dx) / (Math.PI * 2) + 0.5;
+      cols[idx] = (an * size * 2.5) % size;
+      rows[idx] = Math.sqrt(dx * dx + dy * dy) * size * 0.5;
+    }
+  }
+  const spikeSrc = mapCoordsBilinear(spikeN, size, size, rows, cols);
+  const out = new Float32Array(N);
+  for (let j = 0; j < size; j++) {
+    const fy = j / size;
+    const dy = fy - 0.5;
+    for (let i = 0; i < size; i++) {
+      const fx = i / size;
+      const dx = fx - 0.5;
+      const idx = j * size + i;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      // F2-F1 voronoi 邊（裂縫）
+      let f1 = 9, f2 = 9;
+      for (let c = 0; c < C; c++) {
+        const ddx = fx - px[c], ddy = fy - py[c];
+        const d = Math.sqrt(ddx * ddx + ddy * ddy);
+        if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
+      }
+      const crack = Math.pow(Math.max(0, 1 - (f2 - f1) * 26), 3.2);   // 亮裂縫線
+      const disc = (1 - sstep(R - 0.05, R, r)) * (0.55 + Math.min(1, (R - r) * 3) * 0.45);
+      // 邊緣放射尖刺（伸出圓盤外）
+      const spike = Math.pow(Math.max(0, spikeSrc[idx] - 0.52) / 0.48, 2.2)
+                  * Math.exp(-Math.pow((r - R) / 0.10, 2));
+      const center = Math.exp(-r * r / 0.003) * 0.5;
+      out[idx] = Math.min(1, crack * disc + spike * 0.85 + center);
+    }
+  }
+  return out;
+}
+
+// ============================================================
 // Flare sprites v2 — 太陽芒 / 光斑鏈 / 閃點 / 體積光 / 月暈
 // ============================================================
 function generateSunburst(size, octaves, seed, freqScale) {
@@ -2079,6 +2270,10 @@ const GENERATORS = {
   hex:       generateHex,
   sparkle:   generateSparkle,
   grain:     generateGrain,
+  smoketrail: generateSmokeTrail,
+  impactring: generateImpactRing,
+  crystal:    generateCrystalBurst,
+  groundcrack:generateGroundCrack,
   glow:      generateGlow,
   slash:     generateSlash,
   trail:     generateTrail,
@@ -2332,6 +2527,10 @@ const TYPE_LABELS = [
   ['hex',       '⬡ Hex         六角護盾'],
   ['sparkle',   '⭐ Sparkle     星點閃爍'],
   ['grain',     '🎞 Grain       細顆粒'],
+  ['smoketrail','🌬 SmokeTrail 橫煙拖尾'],
+  ['impactring','💥 ImpactRing 衝擊光環'],
+  ['crystal',   '❄ CrystalBurst 水晶爆裂'],
+  ['groundcrack','🕳 GroundCrack 地裂衝擊'],
   ['glow',      '🔆 Glow        柔光光暈'],
   ['slash',     '🗡 Slash       斬擊月牙'],
   ['trail',     '🌠 Trail       拖尾漸層'],
@@ -2511,8 +2710,8 @@ const TYPE_GROUPS = [
   { label: '扭曲 / 流場', keys: ['warp','distort','flowmap'] },
   { label: '極座標 Sprite', keys: ['shockwave','voidring','streaks','vortex'] },
   { label: '圖案 / 顆粒', keys: ['hex','sparkle','grain'] },
-  { label: '打擊 / 魔法', keys: ['slash','trail','beam','bolt','ringbolt','flame','magic'] },
-  { label: '煙霧 Sprite', keys: ['puff','plume','wisps','smokering'] },
+  { label: '打擊 / 魔法', keys: ['slash','trail','beam','bolt','ringbolt','flame','magic','impactring','crystal','groundcrack'] },
+  { label: '煙霧 Sprite', keys: ['puff','plume','wisps','smokering','smoketrail'] },
   { label: '光暈 Sprite', keys: ['glow','starglow','anamorph','ringglow','sunburst','lenschain','glint','godrays','halo'] },
 ];
 const TYPE_MAP = Object.fromEntries(TYPE_LABELS);
